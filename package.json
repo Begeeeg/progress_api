@@ -11,9 +11,13 @@
   "license": "ISC",
   "packageManager": "pnpm@10.30.3",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mongoose": "^9.9.5"
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.5",
+    "zod": "^4.5.4"
   }
 }
