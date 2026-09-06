@@ -31,12 +31,6 @@ const UserSchema = new Schema<UserDocument>(
             lowercase: true,
             trim: true,
         },
-        githubAccount: {
-            type: String,
-            required: true,
-            unique: true,
-            trim: true,
-        },
         avatarUrl: {
             type: String,
             default: null,

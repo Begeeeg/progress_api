@@ -3,7 +3,6 @@ export interface IUser {
     givenname: string;
     surname: string;
     email: string;
-    githubAccount: string;
     avatarUrl?: string;
     createdAt: Date;
     updatedAt: Date;
