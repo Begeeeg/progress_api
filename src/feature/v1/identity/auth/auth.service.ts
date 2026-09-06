@@ -79,7 +79,7 @@ export const registerService = async ({
     }
 
     try {
-        await sendVerificationEmail(email, verificationToken);
+        await sendVerificationEmail(email, username, verificationToken);
     } catch (error) {
         console.error("Failed to send verification email:", error);
     }
