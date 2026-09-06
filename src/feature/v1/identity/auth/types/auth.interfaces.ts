@@ -2,7 +2,7 @@ import { Types } from "mongoose";
 
 export interface IAuth {
     userId: Types.ObjectId;
-    hashedPassword: string;
+    password: string;
     isOnline: boolean;
     lastLogin: Date | null;
     lastLogout: Date | null;

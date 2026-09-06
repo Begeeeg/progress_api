@@ -11,7 +11,7 @@ const AuthSchema = new Schema<AuthDocument>(
             required: true,
             unique: true,
         },
-        hashedPassword: {
+        password: {
             type: String,
             required: true,
             select: false,
