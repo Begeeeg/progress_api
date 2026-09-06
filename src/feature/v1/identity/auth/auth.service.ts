@@ -1,11 +1,15 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { ConflictError } from "../../../../common/error/errorStatusCode";
+import {
+    BadRequestError,
+    ConflictError,
+} from "../../../../common/error/errorStatusCode";
 import { RegisterData } from "./types/auth.types";
 import UserModel from "../user/user.model";
 import AuthModel from "./auth.model";
 import { sendVerificationEmail } from "../../../../common/utils/sendVerificationEmail";
+import { sendWelcomeEmail } from "../../../../common/utils/sendWelcomeEmail";
 
 export const registerService = async ({
     username,
@@ -91,6 +95,39 @@ export const registerService = async ({
         surname: user.surname,
         email: user.email,
         isOnline: auth.isOnline,
+        isVerified: auth.isVerified,
+    };
+};
+
+export const verifyEmailService = async (token: string) => {
+    const auth = await AuthModel.findOne({
+        verificationToken: token,
+    }).select("+verificationToken +verificationTokenExpiry");
+    if (!auth) {
+        throw new BadRequestError("Invalid or expired verification token");
+    }
+    if (
+        !auth.verificationTokenExpiry ||
+        auth.verificationTokenExpiry < new Date()
+    ) {
+        throw new BadRequestError("Verification token has expired");
+    }
+    auth.isVerified = true;
+    auth.unverifiedExpiresAt = null;
+    auth.verificationToken = null;
+    auth.verificationTokenExpiry = null;
+    await auth.save();
+
+    const user = await UserModel.findById(auth.userId);
+
+    if (user?.email) {
+        sendWelcomeEmail(user.email, user.username).catch((err) =>
+            console.error("Failed to send welcome email:", err)
+        );
+    }
+
+    return {
+        username: user?.username,
         isVerified: auth.isVerified,
     };
 };

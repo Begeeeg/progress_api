@@ -15,3 +15,22 @@ export const registerController = async (
         data: user,
     });
 };
+
+export const verifyEmailController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    const { token } = req.query;
+
+    if (!token || typeof token !== "string") {
+        res.status(400).json({ message: "Token is required" });
+        return;
+    }
+
+    const user = await authService.verifyEmailService(token);
+
+    res.status(200).json({
+        message: "Email verified successfully",
+        data: user,
+    });
+};
