@@ -125,9 +125,27 @@ export const verifyEmailService = async (token: string) => {
             console.error("Failed to send welcome email:", err)
         );
     }
+};
 
-    return {
-        username: user?.username,
-        isVerified: auth.isVerified,
-    };
+export const resendVerificationService = async (email: string) => {
+    const user = await UserModel.findOne({ email });
+
+    if (!user) {
+        throw new BadRequestError("User not found");
+    }
+
+    const auth = await AuthModel.findOne({ userId: user._id });
+
+    if (!auth || auth.isVerified) {
+        throw new BadRequestError("User is already verified or not found");
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
+
+    auth.verificationToken = verificationToken;
+    auth.verificationTokenExpiry = verificationTokenExpiry;
+    await auth.save();
+
+    await sendVerificationEmail(email, user.username, verificationToken);
 };

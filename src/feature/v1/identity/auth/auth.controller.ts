@@ -30,7 +30,24 @@ export const verifyEmailController = async (
     const user = await authService.verifyEmailService(token);
 
     res.status(200).json({
-        message: "Email verified successfully",
-        data: user,
+        message: "User email verified successfully",
+    });
+};
+
+export const resendVerificationController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    const email = req.user?.email;
+
+    if (!email) {
+        res.status(401).json({ message: "Not authenticated" });
+        return;
+    }
+
+    await authService.resendVerificationService(email);
+
+    res.status(200).json({
+        message: "Verification send to email successfully",
     });
 };
