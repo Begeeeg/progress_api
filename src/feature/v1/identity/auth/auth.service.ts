@@ -4,6 +4,7 @@ import crypto from "crypto";
 import {
     BadRequestError,
     ConflictError,
+    NotFoundError,
 } from "../../../../common/error/errorStatusCode";
 import { RegisterData } from "./types/auth.types";
 import UserModel from "../user/user.model";
@@ -148,4 +149,17 @@ export const resendVerificationService = async (email: string) => {
     await auth.save();
 
     await sendVerificationEmail(email, user.username, verificationToken);
+};
+
+export const logOutService = async (userId: string) => {
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+        throw new NotFoundError("User not found");
+    }
+
+    await AuthModel.findOneAndUpdate(
+        { userId },
+        { isOnline: false, lastLogout: new Date() }
+    );
 };

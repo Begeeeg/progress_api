@@ -27,7 +27,7 @@ export const verifyEmailController = async (
         return;
     }
 
-    const user = await authService.verifyEmailService(token);
+    await authService.verifyEmailService(token);
 
     res.status(200).json({
         message: "User email verified successfully",
@@ -49,5 +49,30 @@ export const resendVerificationController = async (
 
     res.status(200).json({
         message: "Verification send to email successfully",
+    });
+};
+
+export const logOutController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    const userId = req.user?._id.toString();
+
+    if (!userId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    await authService.logOutService(userId);
+
+    res.cookie("jwt", "", {
+        maxAge: 0,
+        httpOnly: true,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+    });
+
+    res.status(200).json({
+        message: "User logged out successfully",
     });
 };

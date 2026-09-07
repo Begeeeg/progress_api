@@ -1,5 +1,6 @@
 import express from "express";
 import {
+    logOutController,
     registerController,
     resendVerificationController,
     verifyEmailController,
@@ -13,5 +14,6 @@ const router = express.Router();
 router.post("/register", validate(RegisterUserSchema), registerController);
 router.get("/verify-email", verifyEmailController);
 router.post("/resend-verification", requireAuth, resendVerificationController);
+router.post("/logout", requireAuth, logOutController);
 
 export default router;
