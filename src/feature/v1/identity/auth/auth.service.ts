@@ -22,7 +22,6 @@ export const registerService = async ({
     const session = await mongoose.startSession();
     let user;
     let auth;
-    let verificationToken: string;
 
     try {
         session.startTransaction();
@@ -38,13 +37,12 @@ export const registerService = async ({
             throw new ConflictError("Email already exists");
         }
 
-        const hashPassword = await bcrypt.hash(password, 10);
-        verificationToken = crypto.randomBytes(32).toString("hex");
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const verificationToken = crypto.randomBytes(32).toString("hex");
         const verificationTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
 
         const lastLogin = new Date();
         const isOnline = true;
-        const isVerified = false;
         const unverifiedExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
         [user] = await UserModel.create(
@@ -63,12 +61,11 @@ export const registerService = async ({
             [
                 {
                     userId: user._id,
-                    password: hashPassword,
+                    password: hashedPassword,
                     isOnline,
                     lastLogin,
                     verificationToken,
                     verificationTokenExpiry,
-                    isVerified,
                     unverifiedExpiresAt,
                 },
             ],
@@ -76,17 +73,13 @@ export const registerService = async ({
         );
 
         await session.commitTransaction();
+
+        await sendVerificationEmail(email, username, verificationToken);
     } catch (error) {
         await session.abortTransaction();
         throw error;
     } finally {
         session.endSession();
-    }
-
-    try {
-        await sendVerificationEmail(email, username, verificationToken);
-    } catch (error) {
-        console.error("Failed to send verification email:", error);
     }
 
     return {
@@ -104,28 +97,27 @@ export const verifyEmailService = async (token: string) => {
     const auth = await AuthModel.findOne({
         verificationToken: token,
     }).select("+verificationToken +verificationTokenExpiry");
-    if (!auth) {
-        throw new BadRequestError("Invalid or expired verification token");
-    }
+
     if (
+        !auth ||
         !auth.verificationTokenExpiry ||
         auth.verificationTokenExpiry < new Date()
     ) {
-        throw new BadRequestError("Verification token has expired");
+        throw new BadRequestError("Invalid or expired verification token");
     }
+
+    const user = await UserModel.findById(auth.userId);
+    if (!user) {
+        throw new NotFoundError("User not found");
+    }
+
     auth.isVerified = true;
     auth.unverifiedExpiresAt = null;
     auth.verificationToken = null;
     auth.verificationTokenExpiry = null;
     await auth.save();
 
-    const user = await UserModel.findById(auth.userId);
-
-    if (user?.email) {
-        sendWelcomeEmail(user.email, user.username).catch((err) =>
-            console.error("Failed to send welcome email:", err)
-        );
-    }
+    await sendWelcomeEmail(user.email, user.username);
 };
 
 export const resendVerificationService = async (email: string) => {
@@ -187,9 +179,10 @@ export const logInService = async ({ email, password }: LoginData) => {
         throw new BadRequestError("Invalid email or password");
     }
 
-    await AuthModel.findOneAndUpdate(
+    const updatedAuth = await AuthModel.findOneAndUpdate(
         { userId: user._id },
-        { isOnline: true, lastLogout: new Date() }
+        { isOnline: true, lastLogin: new Date() },
+        { new: true }
     );
 
     return {
@@ -198,7 +191,7 @@ export const logInService = async ({ email, password }: LoginData) => {
         givenname: user.givenname,
         surname: user.surname,
         email: user.email,
-        isOnline: auth.isOnline,
-        isVerified: auth.isVerified,
+        isOnline: updatedAuth?.isOnline,
+        isVerified: updatedAuth?.isVerified,
     };
 };

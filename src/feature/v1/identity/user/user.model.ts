@@ -11,18 +11,21 @@ const UserSchema = new Schema<UserDocument>(
             unique: true,
             trim: true,
             minlength: 3,
+            maxlength: 15,
         },
         givenname: {
             type: String,
             required: true,
             trim: true,
             minlength: 3,
+            maxlength: 15,
         },
         surname: {
             type: String,
             required: true,
             trim: true,
             minlength: 3,
+            maxlength: 15,
         },
         email: {
             type: String,

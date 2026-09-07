@@ -5,13 +5,13 @@ export const RegisterUserSchema = z
         username: z
             .string()
             .trim()
-            .min(1, "Username must be at least 1 characters")
+            .min(3, "Username must be at least 3 characters")
             .max(15, "Username must be at most 15 characters"),
 
         givenname: z
             .string()
             .trim()
-            .min(1, "Givenname must be at least 1 characters")
+            .min(3, "Givenname must be at least 3 characters")
             .max(15, "Givenname must be at most 15 characters")
             .transform((value) => {
                 return value.charAt(0).toUpperCase() + value.slice(1);
@@ -20,7 +20,7 @@ export const RegisterUserSchema = z
         surname: z
             .string()
             .trim()
-            .min(1, "Surname must be at least 1 characters")
+            .min(3, "Surname must be at least 3 characters")
             .max(15, "Surname must be at most 15 characters")
             .transform((value) => {
                 return value.charAt(0).toUpperCase() + value.slice(1);

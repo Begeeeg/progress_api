@@ -15,6 +15,7 @@ const AuthSchema = new Schema<AuthDocument>(
             type: String,
             required: true,
             select: false,
+            minlength: 8,
         },
         isOnline: {
             type: Boolean,
