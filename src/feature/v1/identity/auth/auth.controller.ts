@@ -76,3 +76,17 @@ export const logOutController = async (
         message: "User logged out successfully",
     });
 };
+
+export const logInController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    const user = await authService.logInService(req.body);
+
+    generateTokenandSetCookie(res, user.userId.toString());
+
+    res.status(200).json({
+        message: "User logged in successfully",
+        data: user,
+    });
+};

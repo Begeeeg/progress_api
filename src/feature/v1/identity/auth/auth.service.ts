@@ -6,7 +6,7 @@ import {
     ConflictError,
     NotFoundError,
 } from "../../../../common/error/errorStatusCode";
-import { RegisterData } from "./types/auth.types";
+import { LoginData, RegisterData } from "./types/auth.types";
 import UserModel from "../user/user.model";
 import AuthModel from "./auth.model";
 import { sendVerificationEmail } from "../../../../common/utils/sendVerificationEmail";
@@ -162,4 +162,43 @@ export const logOutService = async (userId: string) => {
         { userId },
         { isOnline: false, lastLogout: new Date() }
     );
+};
+
+export const logInService = async ({ email, password }: LoginData) => {
+    const user = await UserModel.findOne({
+        email,
+    });
+
+    if (!user) {
+        throw new BadRequestError("Invalid email or password");
+    }
+
+    const auth = await AuthModel.findOne({ userId: user._id }).select(
+        "+password"
+    );
+
+    if (!auth) {
+        throw new BadRequestError("Invalid email or password");
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, auth.password);
+
+    if (!isPasswordValid) {
+        throw new BadRequestError("Invalid email or password");
+    }
+
+    await AuthModel.findOneAndUpdate(
+        { userId: user._id },
+        { isOnline: true, lastLogout: new Date() }
+    );
+
+    return {
+        userId: user._id,
+        username: user.username,
+        givenname: user.givenname,
+        surname: user.surname,
+        email: user.email,
+        isOnline: auth.isOnline,
+        isVerified: auth.isVerified,
+    };
 };
