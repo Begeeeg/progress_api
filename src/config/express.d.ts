@@ -1,10 +1,10 @@
 import { Request } from "express";
-import { IUser } from "../feature/v1/identity/user/types/user.interfaces";
+import { UserDocument } from "../feature/v1/identity/user/user.model";
 
 declare global {
     namespace Express {
         interface Request {
-            user?: IUser;
+            user?: UserDocument;
         }
     }
 }
