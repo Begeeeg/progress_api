@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import * as authService from "./auth.service";
 import { generateTokenandSetCookie } from "../../../../common/middleware/genTokenAndSetCookie";
+import {
+    BadRequestError,
+    UnauthorizedError,
+} from "../../../../common/error/errorStatusCode";
 
 export const registerController = async (
     req: Request,
@@ -23,8 +27,7 @@ export const verifyEmailController = async (
     const { token } = req.query;
 
     if (!token || typeof token !== "string") {
-        res.status(400).json({ message: "Token is required" });
-        return;
+        throw new BadRequestError("Verification token is required");
     }
 
     await authService.verifyEmailService(token);
@@ -41,8 +44,9 @@ export const resendVerificationController = async (
     const email = req.user?.email;
 
     if (!email) {
-        res.status(401).json({ message: "Not authenticated" });
-        return;
+        throw new UnauthorizedError(
+            "Unauthorized: Email not found in user context"
+        );
     }
 
     await authService.resendVerificationService(email);
@@ -59,8 +63,9 @@ export const logOutController = async (
     const userId = req.user?._id.toString();
 
     if (!userId) {
-        res.status(401).json({ message: "Unauthorized" });
-        return;
+        throw new UnauthorizedError(
+            "Unauthorized: User ID not found in user context"
+        );
     }
 
     await authService.logOutService(userId);
@@ -68,7 +73,7 @@ export const logOutController = async (
     res.cookie("jwt", "", {
         maxAge: 0,
         httpOnly: true,
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         secure: process.env.NODE_ENV === "production",
     });
 
