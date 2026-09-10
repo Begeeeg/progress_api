@@ -7,7 +7,11 @@
         "api": "nodemon --watch src --ext ts,json --exec tsx src/index.ts",
         "build": "tsc",
         "start": "node dist/index.js",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "test:service:auth": "vitest run src/feature/v1/identity/auth/tests/auth.service.test.ts",
+        "test:controller:auth": "vitest run src/feature/v1/identity/auth/tests/auth.controller.test.ts",
+        "test:integration:auth": "vitest run src/feature/v1/identity/auth/tests/auth.integration.test.ts",
+        "test:coverage": "vitest run --coverage"
     },
     "keywords": [],
     "author": "",
@@ -36,6 +40,7 @@
         "@types/node-cron": "^3.0.11",
         "@types/nodemailer": "^8.0.1",
         "@types/supertest": "^7.2.1",
+        "@vitest/coverage-v8": "^5.0.0",
         "mongodb-memory-server": "^11.2.0",
         "nodemon": "^3.1.14",
         "supertest": "^7.2.2",
