@@ -152,7 +152,8 @@ export const logOutService = async (userId: string) => {
 
     await AuthModel.findOneAndUpdate(
         { userId },
-        { isOnline: false, lastLogout: new Date() }
+        { isOnline: false, lastLogout: new Date() },
+        { returnDocument: "after" }
     );
 };
 
@@ -182,7 +183,7 @@ export const logInService = async ({ email, password }: LoginData) => {
     const updatedAuth = await AuthModel.findOneAndUpdate(
         { userId: user._id },
         { isOnline: true, lastLogin: new Date() },
-        { new: true }
+        { returnDocument: "after" }
     );
 
     return {
