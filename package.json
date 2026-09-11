@@ -11,6 +11,8 @@
         "test:service:auth": "vitest run src/feature/v1/identity/auth/tests/auth.service.test.ts",
         "test:controller:auth": "vitest run src/feature/v1/identity/auth/tests/auth.controller.test.ts",
         "test:integration:auth": "vitest run src/feature/v1/identity/auth/tests/auth.integration.test.ts",
+        "test:api:auth": "vitest run src/feature/v1/identity/auth/tests/auth.api.test.ts",
+        "test:e2e:auth": "vitest run src/feature/v1/identity/auth/tests/auth.e2e.test.ts",
         "test:coverage": "vitest run --coverage"
     },
     "keywords": [],
