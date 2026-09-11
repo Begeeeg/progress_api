@@ -73,7 +73,7 @@ export const logOutController = async (
     res.cookie("jwt", "", {
         maxAge: 0,
         httpOnly: true,
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        sameSite: "strict",
         secure: process.env.NODE_ENV === "production",
     });
 
