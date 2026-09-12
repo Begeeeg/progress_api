@@ -15,3 +15,7 @@ export interface UpdateUserPasswordData {
     currentPassword: string;
     newPassword: string;
 }
+
+export interface SearchUsersData {
+    query: string;
+}

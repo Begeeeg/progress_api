@@ -6,6 +6,7 @@ import {
 import AuthModel from "../auth/auth.model";
 import {
     GetUserData,
+    SearchUsersData,
     UpdateUserInfoData,
     UpdateUserPasswordData,
 } from "./types/user.types";
@@ -136,4 +137,45 @@ export const updatePasswordService = async ({
 
     auth.password = hashedPassword;
     await auth.save();
+};
+
+export const searchUsersService = async ({ query }: SearchUsersData) => {
+    if (!query || query.trim().length === 0) {
+        throw new BadRequestError("Search query is required");
+    }
+
+    const trimmedQuery = query.trim();
+
+    const users = await UserModel.find({
+        $or: [
+            { username: { $regex: trimmedQuery, $options: "i" } },
+            { givenname: { $regex: trimmedQuery, $options: "i" } },
+            { surname: { $regex: trimmedQuery, $options: "i" } },
+        ],
+    })
+        .select("username givenname surname email")
+        .limit(20);
+
+    if (users.length === 0) {
+        return [];
+    }
+
+    const userIds = users.map((user) => user._id);
+
+    const auths = await AuthModel.find({
+        userId: { $in: userIds },
+    }).select("userId isOnline");
+
+    const authByUserId = new Map(
+        auths.map((auth) => [auth.userId.toString(), auth.isOnline])
+    );
+
+    return users.map((user) => ({
+        id: user._id,
+        username: user.username,
+        givenname: user.givenname,
+        surname: user.surname,
+        email: user.email,
+        isOnline: authByUserId.get(user._id.toString()) ?? false,
+    }));
 };

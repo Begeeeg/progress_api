@@ -1,6 +1,7 @@
 import express from "express";
 import {
     getUserController,
+    searchUsersController,
     updatePasswordController,
     updateUserInfoController,
 } from "./user.controller";
@@ -24,5 +25,6 @@ router.patch(
     validate(UpdatePasswordSchema),
     updatePasswordController
 );
+router.get("/search", searchUsersController);
 
 export default router;

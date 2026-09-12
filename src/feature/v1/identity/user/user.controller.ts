@@ -61,3 +61,23 @@ export const updatePasswordController = async (
         message: "Password updated successfully",
     });
 };
+
+export const searchUsersController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    const query =
+        req.query.username || req.query.givenname || req.query.surname;
+
+    if (typeof query !== "string") {
+        res.status(400).json({ message: "Invalid search query" });
+        return;
+    }
+
+    const users = await userService.searchUsersService({ query });
+
+    res.status(200).json({
+        message: "Users retrieved successfully",
+        data: users,
+    });
+};
