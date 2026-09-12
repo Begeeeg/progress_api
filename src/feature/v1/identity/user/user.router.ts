@@ -1,9 +1,17 @@
 import express from "express";
-import { getUserController } from "./user.controller";
-import { requireAuth } from "../../../../common/middleware/requireAuth";
+import { getUserController, updateUserInfoController } from "./user.controller";
+import { protectRoutes } from "../../../../common/middleware/protectRoutes";
+import { validate } from "../../../../common/middleware/validatorDataDto";
+import { UpdateUserInfoSchema } from "./dtos/updateInfo.data.dto";
 
 const router = express.Router();
 
-router.get("/me", requireAuth, getUserController);
+router.get("/me", protectRoutes, getUserController);
+router.patch(
+    "/update-info",
+    protectRoutes,
+    validate(UpdateUserInfoSchema),
+    updateUserInfoController
+);
 
 export default router;
