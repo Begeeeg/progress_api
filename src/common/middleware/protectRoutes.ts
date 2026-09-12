@@ -1,7 +1,11 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 
-import { ForbiddenError, UnauthorizedError } from "../error/errorStatusCode";
+import {
+    AppError,
+    UnauthorizedError,
+    ForbiddenError,
+} from "../error/errorStatusCode";
 import UserModel from "../../feature/v1/identity/user/user.model";
 import AuthModel from "../../feature/v1/identity/auth/auth.model";
 
@@ -45,12 +49,18 @@ export const protectRoutes = async (
         req.user = user;
         next();
     } catch (error) {
-        if (error instanceof UnauthorizedError) {
-            return res.status(error.statusCode).json({ error: error.message });
+        // Catch any of our own AppError subclasses (UnauthorizedError,
+        // ForbiddenError, etc.) generically, rather than only
+        // UnauthorizedError — otherwise a legitimate 403 gets misreported
+        // as a generic 401 and logged as if it were unexpected.
+        if (error instanceof AppError) {
+            return res
+                .status(error.statusCode)
+                .json({ message: error.message });
         }
         console.error("Error in protectRoutes:", error);
         return res.status(401).json({
-            error: "Invalid or expired token",
+            message: "Invalid or expired token",
         });
     }
 };
