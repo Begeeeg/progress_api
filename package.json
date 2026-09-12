@@ -13,6 +13,11 @@
         "test:integration:auth": "vitest run src/feature/v1/identity/auth/tests/auth.integration.test.ts",
         "test:api:auth": "vitest run src/feature/v1/identity/auth/tests/auth.api.test.ts",
         "test:e2e:auth": "vitest run src/feature/v1/identity/auth/tests/auth.e2e.test.ts",
+        "test:service:user": "vitest run src/feature/v1/identity/user/tests/user.service.test.ts  --coverage",
+        "test:controller:user": "vitest run src/feature/v1/identity/user/tests/user.controller.test.ts  --coverage",
+        "test:integration:user": "vitest run src/feature/v1/identity/user/tests/user.integration.test.ts  --coverage",
+        "test:api:user": "vitest run src/feature/v1/identity/user/tests/user.api.test.ts  --coverage",
+        "test:e2e:user": "vitest run src/feature/v1/identity/user/tests/user.e2e.test.ts  --coverage",
         "test:coverage": "vitest run --coverage"
     },
     "keywords": [],
