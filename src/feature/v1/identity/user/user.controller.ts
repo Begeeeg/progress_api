@@ -81,3 +81,29 @@ export const searchUsersController = async (
         data: users,
     });
 };
+
+export const deleteUserController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    if (!req.user) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    await userService.deleteUserService({
+        id: req.user._id.toString(),
+        password: req.body.password,
+    });
+
+    res.cookie("jwt", "", {
+        maxAge: 0,
+        httpOnly: true,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+    });
+
+    res.status(200).json({
+        message: "Account deleted successfully",
+    });
+};

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import {
     BadRequestError,
     ConflictError,
@@ -5,6 +6,7 @@ import {
 } from "../../../../common/error/errorStatusCode";
 import AuthModel from "../auth/auth.model";
 import {
+    DeleteUserData,
     GetUserData,
     SearchUsersData,
     UpdateUserInfoData,
@@ -178,4 +180,44 @@ export const searchUsersService = async ({ query }: SearchUsersData) => {
         email: user.email,
         isOnline: authByUserId.get(user._id.toString()) ?? false,
     }));
+};
+
+export const deleteUserService = async ({ id, password }: DeleteUserData) => {
+    const session = await mongoose.startSession();
+
+    try {
+        session.startTransaction();
+
+        const user = await UserModel.findById(id).session(session);
+        if (!user) {
+            throw new NotFoundError("User not found");
+        }
+
+        const auth = await AuthModel.findOne({ userId: user._id })
+            .select("+password")
+            .session(session);
+        if (!auth) {
+            throw new NotFoundError("Auth record not found");
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, auth.password);
+        if (!isPasswordValid) {
+            throw new BadRequestError("Invalid password");
+        }
+
+        await AuthModel.deleteOne({ userId: user._id }).session(session);
+        await UserModel.deleteOne({ _id: user._id }).session(session);
+
+        await session.commitTransaction();
+
+        return {
+            id: user._id,
+            username: user.username,
+        };
+    } catch (error) {
+        await session.abortTransaction();
+        throw error;
+    } finally {
+        session.endSession();
+    }
 };
