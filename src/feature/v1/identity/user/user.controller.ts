@@ -41,3 +41,23 @@ export const updateUserInfoController = async (
         data: user,
     });
 };
+
+export const updatePasswordController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    if (!req.user) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    await userService.updatePasswordService({
+        id: req.user._id.toString(),
+        currentPassword: req.body.currentPassword,
+        newPassword: req.body.newPassword,
+    });
+
+    res.status(200).json({
+        message: "Password updated successfully",
+    });
+};

@@ -9,3 +9,9 @@ export interface UpdateUserInfoData {
     surname?: string;
     password: string;
 }
+
+export interface UpdateUserPasswordData {
+    id: string;
+    currentPassword: string;
+    newPassword: string;
+}
