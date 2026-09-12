@@ -288,7 +288,8 @@ describe("auth.service", () => {
 
             expect(AuthModel.findOneAndUpdate).toHaveBeenCalledWith(
                 { userId: "user123" },
-                expect.objectContaining({ isOnline: false })
+                expect.objectContaining({ isOnline: false }),
+                { returnDocument: "after" }
             );
         });
 
