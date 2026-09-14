@@ -1,0 +1,13 @@
+import { ProjectRole, ProjectStatus, ProjectType } from "./project.enum";
+
+export interface CreateProjectData {
+    userId: string;
+    title: string;
+    type?: ProjectType;
+    documentation?: string;
+    githubRepo?: string;
+    dueDate: Date;
+    status: ProjectStatus;
+    members?: string[];
+    role: ProjectRole;
+}
