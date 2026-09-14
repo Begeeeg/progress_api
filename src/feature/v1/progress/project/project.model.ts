@@ -10,12 +10,13 @@ const ProjectSchema = new Schema<ProjectDocument>(
             type: Schema.Types.ObjectId,
             ref: "User",
             required: true,
-            unique: true,
         },
         title: {
             type: String,
             required: true,
             trim: true,
+            minlength: 1,
+            maxlength: 15,
         },
         type: {
             type: String,
@@ -24,12 +25,10 @@ const ProjectSchema = new Schema<ProjectDocument>(
         },
         documentation: {
             type: String,
-            required: true,
             trim: true,
         },
         githubRepo: {
             type: String,
-            required: true,
             trim: true,
         },
         dueDate: {
@@ -40,10 +39,6 @@ const ProjectSchema = new Schema<ProjectDocument>(
             type: String,
             enum: Object.values(ProjectStatus),
             default: ProjectStatus.ACTIVE,
-        },
-        workload: {
-            type: Number,
-            required: true,
         },
         members: [
             {

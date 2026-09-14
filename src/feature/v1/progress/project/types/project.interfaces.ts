@@ -5,11 +5,10 @@ export interface IProject {
     userId: Types.ObjectId;
     title: string;
     type: ProjectType;
-    documentation: string;
-    githubRepo: string;
+    documentation?: string;
+    githubRepo?: string;
     dueDate: Date;
     status: ProjectStatus;
-    workload: number;
-    members?: string[];
+    members?: Types.ObjectId[];
     role: ProjectRole;
 }
