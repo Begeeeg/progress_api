@@ -27,3 +27,22 @@ export const createProjectController = async (
         data: project,
     });
 };
+
+export const getProjectController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    if (!req.user) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    const projects = await projectService.getProjectService({
+        userId: req.user._id.toString(),
+    });
+
+    res.status(200).json({
+        message: "Fetched lists successfully",
+        data: projects,
+    });
+};

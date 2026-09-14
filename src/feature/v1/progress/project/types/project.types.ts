@@ -11,3 +11,7 @@ export interface CreateProjectData {
     members?: string[];
     role: ProjectRole;
 }
+
+export interface GetProjectData {
+    userId: string;
+}
