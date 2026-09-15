@@ -9,6 +9,7 @@ import ProjectModel from "./project.model";
 import { ProjectRole, ProjectType } from "./types/project.enum";
 import {
     CreateProjectData,
+    DeleteProjectData,
     GetProjectByIdData,
     GetProjectSearchData,
     GetProjectsData,
@@ -343,4 +344,25 @@ export const updateProjectService = async ({
         remainingDays,
         isOwner,
     };
+};
+
+export const deleteProjectService = async ({
+    userId,
+    projectId,
+}: DeleteProjectData) => {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+        throw new NotFoundError("User not found");
+    }
+
+    const project = await ProjectModel.findById(projectId);
+    if (!project) {
+        throw new NotFoundError("Project not found");
+    }
+
+    if (!project.userId.equals(user._id)) {
+        throw new ForbiddenError("Only the project owner can delete this list");
+    }
+
+    await ProjectModel.deleteOne({ _id: project._id });
 };

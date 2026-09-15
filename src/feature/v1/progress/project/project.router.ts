@@ -3,6 +3,7 @@ import { protectRoutes } from "../../../../common/middleware/protectRoutes";
 import { CreateProjectSchema } from "./dtos/create.data.dto";
 import {
     createProjectController,
+    deleteProjectController,
     getProjectByIdController,
     getProjectsController,
     getProjectSearchController,
@@ -32,5 +33,7 @@ router.patch(
     validate(UpdateProjectSchema),
     updateProjectController
 );
+
+router.delete("/delete", protectRoutes, deleteProjectController);
 
 export default router;

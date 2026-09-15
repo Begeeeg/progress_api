@@ -40,3 +40,8 @@ export interface UpdateProjectData {
     status: ProjectStatus;
     members?: string[];
 }
+
+export interface DeleteProjectData {
+    userId: string;
+    projectId: string;
+}
