@@ -400,3 +400,29 @@ export const getSharedProjectsService = async ({ userId }: GetProjectsData) => {
         };
     });
 };
+
+export const leaveProjectService = async ({
+    userId,
+    projectId,
+}: GetProjectByIdData) => {
+    const project = await ProjectModel.findById(projectId);
+    if (!project) {
+        throw new NotFoundError("Project not found");
+    }
+
+    if (project.userId.equals(userId)) {
+        throw new BadRequestError("The owner cannot leave the project.");
+    }
+
+    const members = project.members ?? [];
+
+    const isMember = members.some((member) => member.equals(userId));
+
+    if (!isMember) {
+        throw new BadRequestError("You are not a member of this project.");
+    }
+
+    project.members = members.filter((member) => !member.equals(userId));
+
+    await project.save();
+};
