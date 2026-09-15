@@ -28,3 +28,15 @@ export interface GetProjectSearchData {
     status?: ProjectStatus;
     dueDate?: Date;
 }
+
+export interface UpdateProjectData {
+    userId: string;
+    projectId: string;
+    title: string;
+    type: ProjectType;
+    documentation?: string;
+    githubRepo?: string;
+    dueDate: Date;
+    status: ProjectStatus;
+    members?: string[];
+}

@@ -6,8 +6,10 @@ import {
     getProjectByIdController,
     getProjectsController,
     getProjectSearchController,
+    updateProjectController,
 } from "./project.controller";
 import { validate } from "../../../../common/middleware/validatorDataDto";
+import { UpdateProjectSchema } from "./dtos/update.data.dto";
 
 const router = express.Router();
 
@@ -23,5 +25,12 @@ router.get("/", protectRoutes, getProjectsController);
 router.get("/search", protectRoutes, getProjectSearchController);
 
 router.get("/getbyid", protectRoutes, getProjectByIdController);
+
+router.patch(
+    "/update",
+    protectRoutes,
+    validate(UpdateProjectSchema),
+    updateProjectController
+);
 
 export default router;

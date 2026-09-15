@@ -139,3 +139,37 @@ export const getProjectSearchController = async (
         data: projects,
     });
 };
+
+export const updateProjectController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    if (!req.user) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    const { projectId } = req.query;
+
+    if (typeof projectId !== "string") {
+        res.status(400).json({ message: "Invalid project id" });
+        return;
+    }
+
+    const project = await projectService.updateProjectService({
+        userId: req.user._id.toString(),
+        projectId,
+        title: req.body.title,
+        type: req.body.type,
+        documentation: req.body.documentation,
+        githubRepo: req.body.githubRepo,
+        dueDate: req.body.dueDate,
+        status: req.body.status,
+        members: req.body.members,
+    });
+
+    res.status(200).json({
+        message: "Updated list successfully",
+        data: project,
+    });
+};

@@ -12,6 +12,7 @@ import {
     GetProjectByIdData,
     GetProjectSearchData,
     GetProjectsData,
+    UpdateProjectData,
 } from "./types/project.types";
 
 export const createProjectService = async ({
@@ -227,4 +228,119 @@ export const getProjectSearchService = async ({
             isOwner,
         };
     });
+};
+
+export const updateProjectService = async ({
+    userId,
+    projectId,
+    title,
+    type,
+    documentation,
+    githubRepo,
+    dueDate,
+    status,
+    members,
+}: UpdateProjectData) => {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+        throw new NotFoundError("User not found");
+    }
+
+    const project = await ProjectModel.findById(projectId);
+    if (!project) {
+        throw new NotFoundError("Project not found");
+    }
+
+    const isOwner = project.userId.equals(user._id);
+    if (!isOwner) {
+        throw new ForbiddenError(
+            "Only the project owner can update this project"
+        );
+    }
+
+    const updateFields: Record<string, unknown> = {};
+
+    if (title !== undefined) {
+        updateFields.title = title;
+    }
+    if (documentation !== undefined) {
+        updateFields.documentation = documentation;
+    }
+    if (githubRepo !== undefined) {
+        updateFields.githubRepo = githubRepo;
+    }
+    if (status !== undefined) {
+        updateFields.status = status;
+    }
+
+    const resolvedType = type ?? project.type;
+    const typeChanged = type !== undefined && type !== project.type;
+
+    if (members !== undefined || typeChanged) {
+        const validatedMembers = await validateMembers(
+            userId,
+            resolvedType,
+            members
+        );
+        updateFields.members = validatedMembers;
+    }
+
+    if (type !== undefined) {
+        updateFields.type = resolvedType;
+    }
+
+    if (dueDate !== undefined) {
+        const parsedDueDate = new Date(dueDate);
+
+        if (isNaN(parsedDueDate.getTime())) {
+            throw new BadRequestError("Invalid due date");
+        }
+
+        const remainingDays = Math.ceil(
+            (parsedDueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        );
+
+        if (remainingDays < 0) {
+            throw new BadRequestError("Due date cannot be in the past");
+        }
+
+        updateFields.dueDate = parsedDueDate;
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+        throw new BadRequestError(
+            "At least one field must be provided to update"
+        );
+    }
+
+    const updatedProject = await ProjectModel.findByIdAndUpdate(
+        projectId,
+        updateFields,
+        { new: true }
+    );
+
+    if (!updatedProject) {
+        throw new NotFoundError("Project not found");
+    }
+
+    const remainingDays = updatedProject.dueDate
+        ? Math.ceil(
+              (updatedProject.dueDate.getTime() - Date.now()) /
+                  (1000 * 60 * 60 * 24)
+          )
+        : undefined;
+
+    return {
+        id: updatedProject._id,
+        userId: updatedProject.userId,
+        title: updatedProject.title,
+        documentation: updatedProject.documentation,
+        githubRepo: updatedProject.githubRepo,
+        status: updatedProject.status,
+        type: updatedProject.type,
+        dueDate: updatedProject.dueDate,
+        members: updatedProject.members,
+        remainingDays,
+        isOwner,
+    };
 };
