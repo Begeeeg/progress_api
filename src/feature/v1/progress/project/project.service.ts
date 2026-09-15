@@ -10,7 +10,8 @@ import { ProjectRole, ProjectType } from "./types/project.enum";
 import {
     CreateProjectData,
     GetProjectByIdData,
-    GetProjectData,
+    GetProjectSearchData,
+    GetProjectsData,
 } from "./types/project.types";
 
 export const createProjectService = async ({
@@ -75,7 +76,7 @@ export const createProjectService = async ({
     };
 };
 
-export const getProjectService = async ({ userId }: GetProjectData) => {
+export const getProjectsService = async ({ userId }: GetProjectsData) => {
     const user = await UserModel.findById(userId);
 
     if (!user) {
@@ -157,4 +158,73 @@ export const getProjectByIdService = async ({
         remainingDays,
         isOwner,
     };
+};
+
+export const getProjectSearchService = async ({
+    userId,
+    title,
+    type,
+    status,
+    dueDate,
+}: GetProjectSearchData) => {
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+        throw new NotFoundError("User not found");
+    }
+
+    const conditions: Record<string, unknown>[] = [
+        { $or: [{ userId: user._id }, { members: user._id }] },
+    ];
+
+    if (title) {
+        conditions.push({ title: { $regex: title.trim(), $options: "i" } });
+    }
+
+    if (type) {
+        conditions.push({ type });
+    }
+
+    if (status) {
+        conditions.push({ status });
+    }
+
+    if (dueDate) {
+        const startOfDay = new Date(dueDate);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+
+        conditions.push({ dueDate: { $gte: startOfDay, $lt: endOfDay } });
+    }
+
+    const projects = await ProjectModel.find(
+        conditions.length > 1 ? { $and: conditions } : conditions[0]
+    )
+        .populate("userId", "_id username")
+        .sort({ createdAt: -1 });
+
+    return projects.map((project) => {
+        const remainingDays = Math.ceil(
+            (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        );
+
+        const ownerId = project.userId._id;
+        const isOwner = ownerId.equals(user._id);
+        return {
+            id: project._id,
+            userId: project.userId._id,
+            title: project.title,
+            type: project.type,
+            document: project.documentation,
+            githubRepo: project.githubRepo,
+            status: project.status,
+            dueDate: project.dueDate,
+            members: project.members,
+            role: project.role,
+            remainingDays,
+            isOwner,
+        };
+    });
 };

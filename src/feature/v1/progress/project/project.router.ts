@@ -4,7 +4,8 @@ import { CreateProjectSchema } from "./dtos/create.data.dto";
 import {
     createProjectController,
     getProjectByIdController,
-    getProjectController,
+    getProjectsController,
+    getProjectSearchController,
 } from "./project.controller";
 import { validate } from "../../../../common/middleware/validatorDataDto";
 
@@ -17,7 +18,9 @@ router.post(
     createProjectController
 );
 
-router.get("/", protectRoutes, getProjectController);
+router.get("/", protectRoutes, getProjectsController);
+
+router.get("/search", protectRoutes, getProjectSearchController);
 
 router.get("/getbyid", protectRoutes, getProjectByIdController);
 

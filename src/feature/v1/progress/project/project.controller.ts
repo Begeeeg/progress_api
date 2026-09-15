@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import * as projectService from "./project.service";
+import { BadRequestError } from "../../../../common/error/errorStatusCode";
+import { ProjectStatus, ProjectType } from "./types/project.enum";
 
 export const createProjectController = async (
     req: Request,
@@ -28,7 +30,7 @@ export const createProjectController = async (
     });
 };
 
-export const getProjectController = async (
+export const getProjectsController = async (
     req: Request,
     res: Response
 ): Promise<void> => {
@@ -37,7 +39,7 @@ export const getProjectController = async (
         return;
     }
 
-    const projects = await projectService.getProjectService({
+    const projects = await projectService.getProjectsService({
         userId: req.user._id.toString(),
     });
 
@@ -71,5 +73,69 @@ export const getProjectByIdController = async (
     res.status(200).json({
         message: "Fetched list successfully",
         data: project,
+    });
+};
+
+export const getProjectSearchController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    if (!req.user) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    const { title, type, status, dueDate } = req.query;
+
+    if (title !== undefined && typeof title !== "string") {
+        throw new BadRequestError("Invalid title filter");
+    }
+
+    if (
+        type !== undefined &&
+        (typeof type !== "string" ||
+            !Object.values(ProjectType).includes(type as ProjectType))
+    ) {
+        throw new BadRequestError(
+            `Invalid type filter. Must be one of: ${Object.values(
+                ProjectType
+            ).join(", ")}`
+        );
+    }
+
+    if (
+        status !== undefined &&
+        (typeof status !== "string" ||
+            !Object.values(ProjectStatus).includes(status as ProjectStatus))
+    ) {
+        throw new BadRequestError(
+            `Invalid status filter. Must be one of: ${Object.values(
+                ProjectStatus
+            ).join(", ")}`
+        );
+    }
+
+    let parsedDueDate: Date | undefined;
+    if (dueDate !== undefined) {
+        if (typeof dueDate !== "string") {
+            throw new BadRequestError("Invalid dueDate filter");
+        }
+        parsedDueDate = new Date(dueDate);
+        if (isNaN(parsedDueDate.getTime())) {
+            throw new BadRequestError("Invalid dueDate filter");
+        }
+    }
+
+    const projects = await projectService.getProjectSearchService({
+        userId: req.user._id.toString(),
+        title: title as string | undefined,
+        type: type as ProjectType | undefined,
+        status: status as ProjectStatus | undefined,
+        dueDate: parsedDueDate,
+    });
+
+    res.status(200).json({
+        message: "Fetched lists successfully",
+        data: projects,
     });
 };
