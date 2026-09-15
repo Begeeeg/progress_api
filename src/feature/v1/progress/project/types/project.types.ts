@@ -15,3 +15,8 @@ export interface CreateProjectData {
 export interface GetProjectData {
     userId: string;
 }
+
+export interface GetProjectByIdData {
+    userId: string;
+    projectId: string;
+}

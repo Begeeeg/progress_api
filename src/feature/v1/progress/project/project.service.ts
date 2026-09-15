@@ -1,12 +1,17 @@
 import {
     BadRequestError,
+    ForbiddenError,
     NotFoundError,
 } from "../../../../common/error/errorStatusCode";
 import { validateMembers } from "../../../../common/utils/validateMembers";
 import UserModel from "../../identity/user/user.model";
 import ProjectModel from "./project.model";
 import { ProjectRole, ProjectType } from "./types/project.enum";
-import { CreateProjectData, GetProjectData } from "./types/project.types";
+import {
+    CreateProjectData,
+    GetProjectByIdData,
+    GetProjectData,
+} from "./types/project.types";
 
 export const createProjectService = async ({
     userId,
@@ -105,4 +110,51 @@ export const getProjectService = async ({ userId }: GetProjectData) => {
             isOwner,
         };
     });
+};
+
+export const getProjectByIdService = async ({
+    userId,
+    projectId,
+}: GetProjectByIdData) => {
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+        throw new NotFoundError("User not found");
+    }
+
+    const project = await ProjectModel.findById(projectId).populate(
+        "members",
+        "_id username"
+    );
+
+    if (!project) {
+        throw new NotFoundError("Project not found");
+    }
+    const remainingDays = Math.ceil(
+        (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+
+    const isOwner = project.userId.equals(user._id);
+    const isMember = (project.members ?? []).some((memberId) =>
+        memberId.equals(user._id)
+    );
+
+    if (!isOwner && !isMember) {
+        throw new ForbiddenError("You do not have access to this list");
+    }
+
+    return {
+        id: project._id,
+        userId: project.userId,
+        title: project.title,
+        type: project.type,
+        document: project.documentation,
+        githubRepo: project.githubRepo,
+        status: project.status,
+        dueDate: project.dueDate,
+        members: project.members,
+        role: project.role,
+        remainingDays,
+        isOwner,
+    };
 };

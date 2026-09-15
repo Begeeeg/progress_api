@@ -46,3 +46,30 @@ export const getProjectController = async (
         data: projects,
     });
 };
+
+export const getProjectByIdController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    if (!req.user) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    const { projectId } = req.query;
+
+    if (typeof projectId !== "string") {
+        res.status(400).json({ message: "Invalid project id" });
+        return;
+    }
+
+    const project = await projectService.getProjectByIdService({
+        userId: req.user._id.toString(),
+        projectId,
+    });
+
+    res.status(200).json({
+        message: "Fetched list successfully",
+        data: project,
+    });
+};
