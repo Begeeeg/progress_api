@@ -7,6 +7,7 @@ import {
     getProjectByIdController,
     getProjectsController,
     getProjectSearchController,
+    getSharedProjectController,
     updateProjectController,
 } from "./project.controller";
 import { validate } from "../../../../common/middleware/validatorDataDto";
@@ -35,5 +36,7 @@ router.patch(
 );
 
 router.delete("/delete", protectRoutes, deleteProjectController);
+
+router.get("/shared", protectRoutes, getSharedProjectController);
 
 export default router;

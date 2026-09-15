@@ -366,3 +366,37 @@ export const deleteProjectService = async ({
 
     await ProjectModel.deleteOne({ _id: project._id });
 };
+
+export const getSharedProjectsService = async ({ userId }: GetProjectsData) => {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+        throw new NotFoundError("User not found");
+    }
+
+    const project = await ProjectModel.find({
+        members: user._id,
+        userId: { $ne: user._id },
+    })
+        .populate("userId", "username")
+        .sort({ createdAt: -1 });
+
+    return project.map((project) => {
+        const remainingDays = Math.ceil(
+            (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        );
+
+        return {
+            id: project._id,
+            userId: project.userId._id,
+            title: project.title,
+            type: project.type,
+            document: project.documentation,
+            githubRepo: project.githubRepo,
+            status: project.status,
+            dueDate: project.dueDate,
+            members: project.members,
+            role: project.role,
+            remainingDays,
+        };
+    });
+};

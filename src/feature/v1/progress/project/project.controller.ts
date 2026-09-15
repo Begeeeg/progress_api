@@ -190,12 +190,35 @@ export const deleteProjectController = async (
         return;
     }
 
-    const list = await projectService.deleteProjectService({
+    await projectService.deleteProjectService({
         userId: req.user._id.toString(),
         projectId,
     });
 
     res.status(200).json({
         message: "Deleted project successfully",
+    });
+};
+
+export const getSharedProjectController = async (
+    req: Request,
+    res: Response
+) => {
+    if (!req.user) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
+    const projects = await projectService.getSharedProjectsService({
+        userId: req.user._id.toString(),
+    });
+
+    res.status(200).json({
+        message:
+            projects.length === 0
+                ? "No shared projects"
+                : "Shared projects fetched successfully",
+        data: projects,
     });
 };
