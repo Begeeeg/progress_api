@@ -1,10 +1,18 @@
 import { transporter } from "../../config/mailer";
 
+/**
+ * Sends the email verification message containing a time-limited verification link.
+ *
+ * The token is passed to the client URL so the verification flow can use it
+ * to identify and validate the pending email verification request.
+ */
 export const sendVerificationEmail = async (
     email: string,
     username: string,
     token: string
 ) => {
+    // The client handles the verification page, while the token allows the
+    // backend verification flow to identify the corresponding request.
     const verifyUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
 
     await transporter.sendMail({

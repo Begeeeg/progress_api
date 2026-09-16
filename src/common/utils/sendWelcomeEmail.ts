@@ -1,5 +1,11 @@
 import { transporter } from "../../config/mailer";
 
+/**
+ * Sends a welcome email after the user's email address has been verified.
+ *
+ * Provides the newly activated account with a direct link to the client
+ * application to continue using the service.
+ */
 export const sendWelcomeEmail = async (email: string, username: string) => {
     await transporter.sendMail({
         from: process.env.MAIL_FROM,
