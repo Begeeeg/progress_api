@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { ProjectRole, ProjectStatus, ProjectType } from "./project.enum";
+import { ProjectStatus, ProjectType } from "./project.enum";
 
 export interface IProject {
     userId: Types.ObjectId;
@@ -10,5 +10,4 @@ export interface IProject {
     dueDate: Date;
     status: ProjectStatus;
     members?: Types.ObjectId[];
-    role: ProjectRole;
 }

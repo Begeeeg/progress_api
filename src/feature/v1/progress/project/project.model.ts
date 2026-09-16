@@ -1,6 +1,6 @@
 import { Schema, model, Document } from "mongoose";
 import { IProject } from "./types/project.interfaces";
-import { ProjectRole, ProjectStatus, ProjectType } from "./types/project.enum";
+import { ProjectStatus, ProjectType } from "./types/project.enum";
 
 export type ProjectDocument = IProject & Document;
 
@@ -46,11 +46,6 @@ const ProjectSchema = new Schema<ProjectDocument>(
                 ref: "User",
             },
         ],
-        role: {
-            type: String,
-            enum: Object.values(ProjectRole),
-            default: ProjectRole.OWNER,
-        },
     },
     {
         timestamps: true,

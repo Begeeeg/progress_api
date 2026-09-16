@@ -21,7 +21,6 @@ export const createProjectController = async (
         dueDate: req.body.dueDate,
         status: req.body.status,
         members: req.body.members,
-        role: req.body.role,
     });
 
     res.status(201).json({

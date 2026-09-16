@@ -6,7 +6,7 @@ import {
 import { validateMembers } from "../../../../common/utils/validateMembers";
 import UserModel from "../../identity/user/user.model";
 import ProjectModel from "./project.model";
-import { ProjectRole, ProjectType } from "./types/project.enum";
+import { ProjectType } from "./types/project.enum";
 import {
     CreateProjectData,
     DeleteProjectData,
@@ -62,8 +62,9 @@ export const createProjectService = async ({
         dueDate: parsedDueDate,
         status,
         members: validatedMembers,
-        role: ProjectRole.OWNER,
     });
+
+    const isOwner = project.userId.equals(user._id);
 
     return {
         title: project.title,
@@ -73,8 +74,8 @@ export const createProjectService = async ({
         status: project.status,
         dueDate: project.dueDate,
         members: project.members,
-        role: project.role,
         remainingDays,
+        isOwner,
     };
 };
 
@@ -108,7 +109,6 @@ export const getProjectsService = async ({ userId }: GetProjectsData) => {
             status: project.status,
             dueDate: project.dueDate,
             members: project.members,
-            role: project.role,
             remainingDays,
             isOwner,
         };
@@ -156,7 +156,6 @@ export const getProjectByIdService = async ({
         status: project.status,
         dueDate: project.dueDate,
         members: project.members,
-        role: project.role,
         remainingDays,
         isOwner,
     };
@@ -212,8 +211,7 @@ export const getProjectSearchService = async ({
             (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
         );
 
-        const ownerId = project.userId._id;
-        const isOwner = ownerId.equals(user._id);
+        const isOwner = project.userId.equals(user._id);
         return {
             id: project._id,
             userId: project.userId._id,
@@ -224,7 +222,6 @@ export const getProjectSearchService = async ({
             status: project.status,
             dueDate: project.dueDate,
             members: project.members,
-            role: project.role,
             remainingDays,
             isOwner,
         };
@@ -395,7 +392,6 @@ export const getSharedProjectsService = async ({ userId }: GetProjectsData) => {
             status: project.status,
             dueDate: project.dueDate,
             members: project.members,
-            role: project.role,
             remainingDays,
         };
     });

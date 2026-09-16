@@ -8,9 +8,3 @@ export enum ProjectStatus {
     INACTIVE = "inactive",
     ACHIEVED = "achieved",
 }
-
-export enum ProjectRole {
-    OWNER = "owner",
-    MEMBER = "member",
-    MANAGER = "manager",
-}

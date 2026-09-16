@@ -1,4 +1,4 @@
-import { ProjectRole, ProjectStatus, ProjectType } from "./project.enum";
+import { ProjectStatus, ProjectType } from "./project.enum";
 
 export interface CreateProjectData {
     userId: string;
@@ -9,7 +9,6 @@ export interface CreateProjectData {
     dueDate: Date;
     status: ProjectStatus;
     members?: string[];
-    role: ProjectRole;
 }
 
 export interface GetProjectsData {
