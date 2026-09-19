@@ -130,3 +130,35 @@ export const updateTaskController = async (
         data: task,
     });
 };
+
+export const deleteTaskController = async (
+    req: Request,
+    res: Response,
+): Promise<void> => {
+    if (!req.user) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    const { projectId, taskId } = req.query;
+
+    if (typeof projectId !== "string") {
+        res.status(400).json({ message: "Invalid project id" });
+        return;
+    }
+
+    if (typeof taskId !== "string") {
+        res.status(400).json({ message: "Invalid task id" });
+        return;
+    }
+
+    await taskService.deleteTaskService({
+        userId: req.user._id.toString(),
+        projectId,
+        taskId,
+    });
+
+    res.status(200).json({
+        message: "Deleted task successfully",
+    });
+};

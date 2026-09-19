@@ -321,3 +321,23 @@ export const updateTaskService = async ({
         remainingDays,
     };
 };
+
+export const deleteTaskService = async ({
+    userId,
+    projectId,
+    taskId,
+}: GetTaskByIdData) => {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+        throw new NotFoundError("User not found");
+    }
+
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+        throw new NotFoundError("Task not found");
+    }
+
+    await getProjectByIdService({ userId, projectId });
+
+    await TaskModel.deleteOne({ _id: task._id });
+};
