@@ -14,3 +14,9 @@ export interface GetTasksData {
     userId: string;
     projectId: string;
 }
+
+export interface GetTaskByIdData {
+    userId: string;
+    projectId: string;
+    taskId: string;
+}

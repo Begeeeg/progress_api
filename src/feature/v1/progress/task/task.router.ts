@@ -1,6 +1,10 @@
 import express from "express";
 import { protectRoutes } from "../../../../common/middleware/protectRoutes";
-import { createTaskController, getTasksController } from "./task.controller";
+import {
+    createTaskController,
+    getTaskByIdController,
+    getTasksController,
+} from "./task.controller";
 import { createTaskSchema } from "./dtos/create.data.dto";
 import { validate } from "../../../../common/middleware/validatorDataDto";
 
@@ -10,8 +14,9 @@ router.post(
     "/",
     protectRoutes,
     validate(createTaskSchema),
-    createTaskController
+    createTaskController,
 );
-router.get("/", protectRoutes, getTasksController)
+router.get("/", protectRoutes, getTasksController);
+router.get("/id", protectRoutes, getTaskByIdController);
 
 export default router;

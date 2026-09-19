@@ -5,7 +5,11 @@ import {
 } from "../../../../common/error/errorStatusCode";
 import UserModel from "../../identity/user/user.model";
 import { getProjectByIdService } from "../project/project.service";
-import { CreateTaskData, GetTasksData } from "./types/task.types";
+import {
+    CreateTaskData,
+    GetTaskByIdData,
+    GetTasksData,
+} from "./types/task.types";
 import TaskModel from "./task.model";
 
 export const createTaskService = async ({
@@ -139,4 +143,37 @@ export const getTasksService = async ({ userId, projectId }: GetTasksData) => {
             remainingDays,
         };
     });
+};
+
+export const getTaskByIdService = async ({
+    userId,
+    projectId,
+    taskId,
+}: GetTaskByIdData) => {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+        throw new NotFoundError("User not found");
+    }
+
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+        throw new NotFoundError("Task not found");
+    }
+
+    await getProjectByIdService({ userId, projectId });
+
+    const remainingDays = Math.ceil(
+        (task.deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+    );
+
+    return {
+        id: task._id,
+        projectId: task.projectId,
+        title: task.title,
+        notes: task.notes,
+        status: task.status,
+        deadline: task.deadline,
+        assignedTo: task.assignedTo,
+        remainingDays,
+    };
 };
