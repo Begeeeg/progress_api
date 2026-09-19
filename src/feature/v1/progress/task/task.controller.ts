@@ -105,7 +105,7 @@ export const updateTaskController = async (
     const { projectId, taskId } = req.query;
 
     if (typeof projectId !== "string") {
-        res.status(400).json({ message: "Invalid projects id" });
+        res.status(400).json({ message: "Invalid project id" });
         return;
     }
 

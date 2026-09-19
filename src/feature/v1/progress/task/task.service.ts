@@ -161,7 +161,11 @@ export const getTaskByIdService = async ({
         throw new NotFoundError("Task not found");
     }
 
-    await getProjectByIdService({ userId, projectId });
+    const project = await getProjectByIdService({ userId, projectId });
+
+    if (task.projectId.toString() !== project.id.toString()) {
+        throw new NotFoundError("Task not found");
+    }
 
     const remainingDays = Math.ceil(
         (task.deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
@@ -337,7 +341,11 @@ export const deleteTaskService = async ({
         throw new NotFoundError("Task not found");
     }
 
-    await getProjectByIdService({ userId, projectId });
+    const project = await getProjectByIdService({ userId, projectId });
+
+    if (task.projectId.toString() !== project.id.toString()) {
+        throw new NotFoundError("Task not found");
+    }
 
     await TaskModel.deleteOne({ _id: task._id });
 };
