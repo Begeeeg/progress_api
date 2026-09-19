@@ -9,3 +9,8 @@ export interface CreateTaskData {
     deadline: Date;
     assignedTo?: string[];
 }
+
+export interface GetTasksData {
+    userId: string;
+    projectId: string;
+}

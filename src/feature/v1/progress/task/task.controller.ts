@@ -12,8 +12,6 @@ export const createTaskController = async (
 
     const { projectId } = req.query;
 
-    // Express query parameters are not guaranteed to be strings, so validate
-    // the value before passing it to the service layer.
     if (typeof projectId !== "string") {
         res.status(400).json({ message: "Invalid project id" });
         return;
@@ -32,5 +30,32 @@ export const createTaskController = async (
     res.status(201).json({
         message: "Created task successfully",
         data: task,
+    });
+};
+
+export const getTasksController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    if (!req.user) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    const { projectId } = req.query;
+
+    if (typeof projectId !== "string") {
+        res.status(400).json({ message: "Invalid project id" });
+        return;
+    }
+
+    const tasks = await taskService.getTasksService({
+        userId: req.user._id.toString(),
+        projectId,
+    });
+
+    res.status(200).json({
+        message: "Fetched tasks successfully",
+        data: tasks,
     });
 };
