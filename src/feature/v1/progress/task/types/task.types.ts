@@ -20,3 +20,14 @@ export interface GetTaskByIdData {
     projectId: string;
     taskId: string;
 }
+
+export interface UpdateTaskData {
+    userId: string;
+    projectId: string;
+    taskId: string;
+    title?: string;
+    notes?: string;
+    status?: TaskStatus;
+    deadline?: Date;
+    assignedTo?: string[];
+}

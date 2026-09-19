@@ -92,3 +92,41 @@ export const getTaskByIdController = async (
         data: tasks,
     });
 };
+
+export const updateTaskController = async (
+    req: Request,
+    res: Response,
+): Promise<void> => {
+    if (!req.user) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    const { projectId, taskId } = req.query;
+
+    if (typeof projectId !== "string") {
+        res.status(400).json({ message: "Invalid projects id" });
+        return;
+    }
+
+    if (typeof taskId !== "string") {
+        res.status(400).json({ message: "Invalid task id" });
+        return;
+    }
+
+    const task = await taskService.updateTaskService({
+        userId: req.user._id.toString(),
+        projectId,
+        taskId,
+        title: req.body.title,
+        notes: req.body.notes,
+        assignedTo: req.body.assignedTo,
+        status: req.body.status,
+        deadline: req.body.deadline,
+    });
+
+    res.status(200).json({
+        message: "Updated task successfully",
+        data: task,
+    });
+};
