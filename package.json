@@ -23,6 +23,11 @@
         "test:integration:project": "vitest run src/feature/v1/progress/project/tests/project.integration.test.ts --coverage",
         "test:api:project": "vitest run src/feature/v1/progress/project/tests/project.api.test.ts --coverage",
         "test:e2e:project": "vitest run src/feature/v1/progress/project/tests/project.e2e.test.ts --coverage",
+        "test:service:task": "vitest run src/feature/v1/progress/task/tests/task.service.test.ts --coverage",
+        "test:controller:task": "vitest run src/feature/v1/progress/task/tests/task.controller.test.ts --coverage",
+        "test:integration:task": "vitest run src/feature/v1/progress/task/tests/task.integration.test.ts --coverage",
+        "test:api:task": "vitest run src/feature/v1/progress/task/tests/task.api.test.ts --coverage",
+        "test:e2e:task": "vitest run src/feature/v1/progress/task/tests/task.e2e.test.ts --coverage",
         "test:coverage": "vitest run --coverage"
     },
     "keywords": [],
