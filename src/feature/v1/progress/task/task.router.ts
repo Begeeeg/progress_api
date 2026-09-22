@@ -11,7 +11,11 @@ import { createTaskSchema } from "./dtos/create.data.dto";
 import { validate } from "../../../../common/middleware/validatorDataDto";
 import { updateTaskSchema } from "./dtos/update.data.dto";
 
-const router = express.Router();
+// mergeParams lets this router read `:projectId` from the parent
+// project router it's mounted under (see project.router.ts:
+// `router.use("/:projectId/task", taskRouter)`). Paths below are relative
+// to that mount point, so they only need to declare their own `:taskId`.
+const router = express.Router({ mergeParams: true });
 
 router.post(
     "/",
@@ -20,13 +24,13 @@ router.post(
     createTaskController,
 );
 router.get("/", protectRoutes, getTasksController);
-router.get("/id", protectRoutes, getTaskByIdController);
+router.get("/:taskId", protectRoutes, getTaskByIdController);
 router.patch(
-    "/id",
+    "/:taskId",
     protectRoutes,
     validate(updateTaskSchema),
     updateTaskController,
 );
-router.delete("/id", protectRoutes, deleteTaskController);
+router.delete("/:taskId", protectRoutes, deleteTaskController);
 
 export default router;

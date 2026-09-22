@@ -26,7 +26,6 @@ let app: typeof import("../../../../../app").default;
 let sendVerificationEmail: ReturnType<typeof vi.fn>;
 
 const PROJECT_BASE = "/api/v1/progress/project";
-const TASK_BASE = "/api/v1/progress/task";
 
 const futureISO = (daysAhead = 30) =>
     new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString();
@@ -73,7 +72,7 @@ const createTask = async (
     projectId: string,
 ) => {
     const res = await agent
-        .post(`${TASK_BASE}?projectId=${projectId}`)
+        .post(`${PROJECT_BASE}/${projectId}/task`)
         .send({ title: "Seed Task", deadline: futureISO(10) });
     return res.body.data.id as string;
 };
@@ -105,11 +104,11 @@ beforeEach(async () => {
 describe("Task API contract", () => {
     describe("authentication contract", () => {
         it.each([
-            ["POST", `${TASK_BASE}?projectId=x`],
-            ["GET", `${TASK_BASE}?projectId=x`],
-            ["GET", `${TASK_BASE}/id?projectId=x&taskId=y`],
-            ["PATCH", `${TASK_BASE}/id?projectId=x&taskId=y`],
-            ["DELETE", `${TASK_BASE}/id?projectId=x&taskId=y`],
+            ["POST", `${PROJECT_BASE}/x/task`],
+            ["GET", `${PROJECT_BASE}/x/task`],
+            ["GET", `${PROJECT_BASE}/x/task/y`],
+            ["PATCH", `${PROJECT_BASE}/x/task/y`],
+            ["DELETE", `${PROJECT_BASE}/x/task/y`],
         ])(
             "%s %s returns 401 with an error body when unauthenticated",
             async (method, path) => {
@@ -123,13 +122,13 @@ describe("Task API contract", () => {
         );
     });
 
-    describe("POST /api/v1/progress/task", () => {
+    describe("POST /api/v1/progress/project/:projectId/task", () => {
         it("returns 201 with the documented response shape", async () => {
             const agent = await createVerifiedUser();
             const projectId = await createProject(agent);
 
             const res = await agent
-                .post(`${TASK_BASE}?projectId=${projectId}`)
+                .post(`${PROJECT_BASE}/${projectId}/task`)
                 .send({
                     title: "Shaped",
                     notes: "some notes",
@@ -171,7 +170,7 @@ describe("Task API contract", () => {
             const projectId = await createProject(agent);
 
             const res = await agent
-                .post(`${TASK_BASE}?projectId=${projectId}`)
+                .post(`${PROJECT_BASE}/${projectId}/task`)
                 .send(body);
 
             expect(res.status).toBe(400);
@@ -182,10 +181,10 @@ describe("Task API contract", () => {
             const agent = await createVerifiedUser();
 
             const res = await agent
-                .post(`${TASK_BASE}?projectId=not-a-valid-id`)
+                .post(`${PROJECT_BASE}/not-a-valid-id/task`)
                 .send({ title: "X", deadline: futureISO(5) });
 
-            expect(res.status).toBe(500);
+            expect(res.status).toBe(400);
             expect(res.body).toEqual({ message: expect.any(String) });
         });
 
@@ -194,7 +193,7 @@ describe("Task API contract", () => {
             const unknownId = new mongoose.Types.ObjectId().toString();
 
             const res = await agent
-                .post(`${TASK_BASE}?projectId=${unknownId}`)
+                .post(`${PROJECT_BASE}/${unknownId}/task`)
                 .send({ title: "X", deadline: futureISO(5) });
 
             expect(res.status).toBe(404);
@@ -210,7 +209,7 @@ describe("Task API contract", () => {
             );
 
             const res = await stranger
-                .post(`${TASK_BASE}?projectId=${projectId}`)
+                .post(`${PROJECT_BASE}/${projectId}/task`)
                 .send({ title: "X", deadline: futureISO(5) });
 
             expect(res.status).toBe(403);
@@ -218,13 +217,13 @@ describe("Task API contract", () => {
         });
     });
 
-    describe("GET /api/v1/progress/task", () => {
+    describe("GET /api/v1/progress/project/:projectId/task", () => {
         it("returns 200 with an array payload", async () => {
             const agent = await createVerifiedUser();
             const projectId = await createProject(agent);
             await createTask(agent, projectId);
 
-            const res = await agent.get(`${TASK_BASE}?projectId=${projectId}`);
+            const res = await agent.get(`${PROJECT_BASE}/${projectId}/task`);
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual({
@@ -232,25 +231,16 @@ describe("Task API contract", () => {
                 data: expect.any(Array),
             });
         });
-
-        it("returns 400 with an error body when projectId is absent", async () => {
-            const agent = await createVerifiedUser();
-
-            const res = await agent.get(TASK_BASE);
-
-            expect(res.status).toBe(400);
-            expect(res.body).toEqual({ message: expect.any(String) });
-        });
     });
 
-    describe("GET /api/v1/progress/task/id", () => {
+    describe("GET /api/v1/progress/project/:projectId/task/:taskId", () => {
         it("returns 200 with the documented single-task shape", async () => {
             const agent = await createVerifiedUser();
             const projectId = await createProject(agent);
             const taskId = await createTask(agent, projectId);
 
             const res = await agent.get(
-                `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
+                `${PROJECT_BASE}/${projectId}/task/${taskId}`,
             );
 
             expect(res.status).toBe(200);
@@ -279,7 +269,7 @@ describe("Task API contract", () => {
             const taskInA = await createTask(agent, projectA);
 
             const res = await agent.get(
-                `${TASK_BASE}/id?projectId=${projectB}&taskId=${taskInA}`,
+                `${PROJECT_BASE}/${projectB}/task/${taskInA}`,
             );
 
             expect(res.status).toBe(404);
@@ -287,16 +277,14 @@ describe("Task API contract", () => {
         });
     });
 
-    describe("PATCH /api/v1/progress/task/id", () => {
+    describe("PATCH /api/v1/progress/project/:projectId/task/:taskId", () => {
         it("returns 200 with the documented updated shape", async () => {
             const agent = await createVerifiedUser();
             const projectId = await createProject(agent);
             const taskId = await createTask(agent, projectId);
 
             const res = await agent
-                .patch(
-                    `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
-                )
+                .patch(`${PROJECT_BASE}/${projectId}/task/${taskId}`)
                 .send({ title: "Renamed" });
 
             expect(res.status).toBe(200);
@@ -318,9 +306,7 @@ describe("Task API contract", () => {
             const taskId = await createTask(agent, projectId);
 
             const res = await agent
-                .patch(
-                    `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
-                )
+                .patch(`${PROJECT_BASE}/${projectId}/task/${taskId}`)
                 .send(body);
 
             expect(res.status).toBe(400);
@@ -328,36 +314,30 @@ describe("Task API contract", () => {
         });
     });
 
-    describe("DELETE /api/v1/progress/task/id", () => {
+    describe("DELETE /api/v1/progress/project/:projectId/task/:taskId", () => {
         it("returns 200 with a plain message body on success", async () => {
             const agent = await createVerifiedUser();
             const projectId = await createProject(agent);
             const taskId = await createTask(agent, projectId);
 
             const res = await agent.delete(
-                `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
+                `${PROJECT_BASE}/${projectId}/task/${taskId}`,
             );
 
             expect(res.status).toBe(200);
-            expect(res.body).toEqual({ message: expect.any(String) });
-        });
-
-        it("returns 400 with an error body when taskId is absent", async () => {
-            const agent = await createVerifiedUser();
-            const projectId = await createProject(agent);
-
-            const res = await agent.delete(
-                `${TASK_BASE}/id?projectId=${projectId}`,
-            );
-
-            expect(res.status).toBe(400);
             expect(res.body).toEqual({ message: expect.any(String) });
         });
     });
 
     describe("unknown task routes", () => {
         it("returns 404 with a plain error body", async () => {
-            const res = await request(app).get(`${TASK_BASE}/does-not-exist`);
+            // A single extra segment beyond `:taskId` matches no route at
+            // all — this is what genuinely exercises the global 404
+            // handler now that `/:projectId/task/...` is a catch-all for
+            // otherwise-shaped requests.
+            const res = await request(app).get(
+                `${PROJECT_BASE}/x/task/y/does-not-exist`,
+            );
 
             expect(res.status).toBe(404);
             expect(res.body).toEqual({ message: expect.any(String) });

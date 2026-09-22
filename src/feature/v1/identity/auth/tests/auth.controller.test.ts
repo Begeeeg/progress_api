@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
+
+vi.mock("jsonwebtoken", () => ({
+    default: {
+        verify: vi.fn(),
+    },
+}));
 
 vi.mock("../auth.service", () => ({
     registerService: vi.fn(),
@@ -13,8 +19,25 @@ vi.mock("../../../../../common/middleware/genTokenAndSetCookie", () => ({
     generateTokenandSetCookie: vi.fn(),
 }));
 
+vi.mock("../../user/user.model", () => ({
+    default: {
+        findById: vi.fn(),
+    },
+}));
+
+vi.mock("../auth.model", () => ({
+    default: {
+        findOne: vi.fn(),
+    },
+}));
+
 import * as authService from "../auth.service";
+import jwt from "jsonwebtoken";
+import UserModel from "../../user/user.model";
+import AuthModel from "../auth.model";
 import { generateTokenandSetCookie } from "../../../../../common/middleware/genTokenAndSetCookie";
+import { requireAuth } from "../../../../../common/middleware/requireAuth";
+import { protectRoutes } from "../../../../../common/middleware/protectRoutes";
 import {
     registerController,
     verifyEmailController,
@@ -35,8 +58,16 @@ const mockRes = () => {
     return res as Response;
 };
 
+const mockAuthReq = (cookie?: string) =>
+    ({
+        cookies: cookie === undefined ? {} : { jwt: cookie },
+    }) as unknown as Request;
+
+const next = vi.fn() as unknown as NextFunction;
+
 beforeEach(() => {
     vi.clearAllMocks();
+    process.env.JWT_SECRET = "test-secret";
 });
 
 describe("auth.controller", () => {
@@ -70,6 +101,166 @@ describe("auth.controller", () => {
             });
         });
     });
+
+describe("auth middleware", () => {
+                describe("requireAuth", () => {
+                    it("returns 401 when the JWT cookie is missing", async () => {
+                        const res = mockRes();
+
+                        await requireAuth(mockAuthReq(), res, next);
+
+                        expect(res.status).toHaveBeenCalledWith(401);
+                        expect(res.json).toHaveBeenCalledWith({
+                            message: "Not authenticated",
+                        });
+                        expect(next).not.toHaveBeenCalled();
+                    });
+
+                    it("returns 401 when the token references a missing user", async () => {
+                        const res = mockRes();
+                        (jwt.verify as any).mockReturnValue({ userId: "missing" });
+                        (UserModel.findById as any).mockResolvedValue(null);
+
+                        await requireAuth(mockAuthReq("token"), res, next);
+
+                        expect(res.status).toHaveBeenCalledWith(401);
+                        expect(res.json).toHaveBeenCalledWith({
+                            message: "User not found",
+                        });
+                    });
+
+                    it("attaches the user and calls next for a valid token", async () => {
+                        const res = mockRes();
+                        const user = { _id: "user1" };
+                        const req = mockAuthReq("token");
+                        (jwt.verify as any).mockReturnValue({ userId: "user1" });
+                        (UserModel.findById as any).mockResolvedValue(user);
+
+                        await requireAuth(req, res, next);
+
+                        expect((req as any).user).toBe(user);
+                        expect(next).toHaveBeenCalledOnce();
+                        expect(res.status).not.toHaveBeenCalled();
+                    });
+
+                    it("returns a generic 401 for unexpected verification failures", async () => {
+                        const res = mockRes();
+                        const errorSpy = vi
+                            .spyOn(console, "error")
+                            .mockImplementation(() => undefined);
+                        (jwt.verify as any).mockImplementation(() => {
+                            throw new Error("invalid token");
+                        });
+
+                        await requireAuth(mockAuthReq("token"), res, next);
+
+                        expect(errorSpy).toHaveBeenCalled();
+                        expect(res.status).toHaveBeenCalledWith(401);
+                        expect(res.json).toHaveBeenCalledWith({
+                            message: "Invalid or expired token",
+                        });
+                        errorSpy.mockRestore();
+                    });
+                });
+
+                describe("protectRoutes", () => {
+                    const user = { _id: "user1" };
+
+                    const setupUserLookup = () => {
+                        (jwt.verify as any).mockReturnValue({ userId: "user1" });
+                        const select = vi.fn().mockResolvedValue(user);
+                        (UserModel.findById as any).mockReturnValue({ select });
+                    };
+
+                    it("returns 401 when the JWT cookie is missing", async () => {
+                        const res = mockRes();
+
+                        await protectRoutes(mockAuthReq(), res, next);
+
+                        expect(res.status).toHaveBeenCalledWith(401);
+                        expect(res.json).toHaveBeenCalledWith({
+                            message: "Not authenticated",
+                        });
+                    });
+
+                    it("returns 401 when the token references a missing user", async () => {
+                        const res = mockRes();
+                        (jwt.verify as any).mockReturnValue({ userId: "missing" });
+                        (UserModel.findById as any).mockReturnValue({
+                            select: vi.fn().mockResolvedValue(null),
+                        });
+
+                        await protectRoutes(mockAuthReq("token"), res, next);
+
+                        expect(res.status).toHaveBeenCalledWith(401);
+                        expect(res.json).toHaveBeenCalledWith({
+                            message: "User not found",
+                        });
+                    });
+
+                    it("returns 401 when the user has no auth record", async () => {
+                        const res = mockRes();
+                        setupUserLookup();
+                        (AuthModel.findOne as any).mockResolvedValue(null);
+
+                        await protectRoutes(mockAuthReq("token"), res, next);
+
+                        expect(res.status).toHaveBeenCalledWith(401);
+                        expect(res.json).toHaveBeenCalledWith({
+                            message: "Auth record not found for user",
+                        });
+                    });
+
+                    it("returns 403 when the user is not verified", async () => {
+                        const res = mockRes();
+                        setupUserLookup();
+                        (AuthModel.findOne as any).mockResolvedValue({
+                            isVerified: false,
+                        });
+
+                        await protectRoutes(mockAuthReq("token"), res, next);
+
+                        expect(res.status).toHaveBeenCalledWith(403);
+                        expect(res.json).toHaveBeenCalledWith({
+                            message: "User is not verified",
+                        });
+                    });
+
+                    it("attaches the user and calls next for a verified user", async () => {
+                        const res = mockRes();
+                        const req = mockAuthReq("token");
+                        setupUserLookup();
+                        (AuthModel.findOne as any).mockResolvedValue({
+                            isVerified: true,
+                        });
+
+                        await protectRoutes(req, res, next);
+
+                        expect((req as any).user).toBe(user);
+                        expect(next).toHaveBeenCalledOnce();
+                        expect(res.status).not.toHaveBeenCalled();
+                    });
+
+                    it("returns a generic 401 for unexpected failures", async () => {
+                        const res = mockRes();
+                        const errorSpy = vi
+                            .spyOn(console, "error")
+                            .mockImplementation(() => undefined);
+                        (jwt.verify as any).mockImplementation(() => {
+                            throw new Error("invalid token");
+                        });
+
+                        await protectRoutes(mockAuthReq("token"), res, next);
+
+                        expect(errorSpy).toHaveBeenCalled();
+                        expect(res.status).toHaveBeenCalledWith(401);
+                        expect(res.json).toHaveBeenCalledWith({
+                            message: "Invalid or expired token",
+                        });
+                        errorSpy.mockRestore();
+                    });
+                });
+            });
 
     describe("verifyEmailController", () => {
         it("verifies email and responds 200", async () => {

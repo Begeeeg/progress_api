@@ -37,8 +37,9 @@ const authedReq = (overrides: Record<string, unknown> = {}) =>
         user: { _id: { toString: () => "user123" } },
         body: {},
         query: {},
+        params: {},
         ...overrides,
-    } as unknown as Request);
+    }) as unknown as Request;
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -71,7 +72,7 @@ describe("project.controller", () => {
             const res = mockRes();
             const created = { title: "New project" };
             (projectService.createProjectService as any).mockResolvedValue(
-                created
+                created,
             );
 
             await createProjectController(req, res);
@@ -88,7 +89,7 @@ describe("project.controller", () => {
             });
             expect(res.status).toHaveBeenCalledWith(201);
             expect(res.json).toHaveBeenCalledWith({
-                message: "Created list successfully",
+                message: "Created project successfully",
                 data: created,
             });
         });
@@ -109,7 +110,7 @@ describe("project.controller", () => {
             const res = mockRes();
             const projects = [{ id: "p1" }];
             (projectService.getProjectsService as any).mockResolvedValue(
-                projects
+                projects,
             );
 
             await getProjectsController(req, res);
@@ -119,7 +120,7 @@ describe("project.controller", () => {
             });
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith({
-                message: "Fetched lists successfully",
+                message: "Fetched projects successfully",
                 data: projects,
             });
         });
@@ -127,7 +128,7 @@ describe("project.controller", () => {
 
     describe("getProjectByIdController", () => {
         it("returns 401 when req.user is missing", async () => {
-            const req = { user: undefined, query: {} } as unknown as Request;
+            const req = { user: undefined, params: {} } as unknown as Request;
             const res = mockRes();
 
             await getProjectByIdController(req, res);
@@ -135,31 +136,19 @@ describe("project.controller", () => {
             expect(res.status).toHaveBeenCalledWith(401);
         });
 
-        it("returns 400 when projectId is missing", async () => {
-            const req = authedReq({ query: {} });
-            const res = mockRes();
-
-            await getProjectByIdController(req, res);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(projectService.getProjectByIdService).not.toHaveBeenCalled();
-        });
-
-        it("returns 400 when projectId is an array", async () => {
-            const req = authedReq({ query: { projectId: ["p1", "p2"] } });
-            const res = mockRes();
-
-            await getProjectByIdController(req, res);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-        });
+        // Note: with `:projectId` as a route param, Express simply won't
+        // match `GET /project` (no segment) to this controller at all — a
+        // missing/array-shaped id is no longer reachable here the way it
+        // was with `req.query`, so those cases are no longer tested at the
+        // controller level. They're covered instead by the router's route
+        // table itself (integration/API tests hitting the real routes).
 
         it("returns 200 with the requested project", async () => {
-            const req = authedReq({ query: { projectId: "p1" } });
+            const req = authedReq({ params: { projectId: "p1" } });
             const res = mockRes();
             const project = { id: "p1" };
             (projectService.getProjectByIdService as any).mockResolvedValue(
-                project
+                project,
             );
 
             await getProjectByIdController(req, res);
@@ -169,6 +158,22 @@ describe("project.controller", () => {
                 projectId: "p1",
             });
             expect(res.status).toHaveBeenCalledWith(200);
+        });
+
+        it("returns 400 when projectId is not a string", async () => {
+            const req = authedReq({
+                params: { projectId: ["p1", "p2"] },
+            });
+            const res = mockRes();
+
+            await getProjectByIdController(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Invalid project id",
+            });
+
+            expect(projectService.getProjectByIdService).not.toHaveBeenCalled();
         });
     });
 
@@ -187,7 +192,7 @@ describe("project.controller", () => {
             const res = mockRes();
 
             await expect(getProjectSearchController(req, res)).rejects.toThrow(
-                "Invalid type filter"
+                "Invalid type filter",
             );
         });
 
@@ -196,7 +201,7 @@ describe("project.controller", () => {
             const res = mockRes();
 
             await expect(getProjectSearchController(req, res)).rejects.toThrow(
-                "Invalid status filter"
+                "Invalid status filter",
             );
         });
 
@@ -205,7 +210,7 @@ describe("project.controller", () => {
             const res = mockRes();
 
             await expect(getProjectSearchController(req, res)).rejects.toThrow(
-                "Invalid title filter"
+                "Invalid title filter",
             );
         });
 
@@ -214,7 +219,7 @@ describe("project.controller", () => {
             const res = mockRes();
 
             await expect(getProjectSearchController(req, res)).rejects.toThrow(
-                "Invalid dueDate filter"
+                "Invalid dueDate filter",
             );
         });
 
@@ -227,7 +232,7 @@ describe("project.controller", () => {
             const res = mockRes();
 
             await expect(getProjectSearchController(req, res)).rejects.toThrow(
-                "Invalid dueDate filter"
+                "Invalid dueDate filter",
             );
         });
 
@@ -242,7 +247,7 @@ describe("project.controller", () => {
             });
             const res = mockRes();
             (projectService.getProjectSearchService as any).mockResolvedValue(
-                []
+                [],
             );
 
             await getProjectSearchController(req, res);
@@ -254,7 +259,7 @@ describe("project.controller", () => {
                     type: ProjectType.TEAM,
                     status: ProjectStatus.ACTIVE,
                     dueDate: expect.any(Date),
-                }
+                },
             );
         });
 
@@ -262,7 +267,7 @@ describe("project.controller", () => {
             const req = authedReq({ query: {} });
             const res = mockRes();
             (projectService.getProjectSearchService as any).mockResolvedValue(
-                []
+                [],
             );
 
             await getProjectSearchController(req, res);
@@ -274,7 +279,7 @@ describe("project.controller", () => {
                     type: undefined,
                     status: undefined,
                     dueDate: undefined,
-                }
+                },
             );
             expect(res.status).toHaveBeenCalledWith(200);
         });
@@ -284,7 +289,7 @@ describe("project.controller", () => {
         it("returns 401 when req.user is missing", async () => {
             const req = {
                 user: undefined,
-                query: {},
+                params: {},
                 body: {},
             } as unknown as Request;
             const res = mockRes();
@@ -294,25 +299,18 @@ describe("project.controller", () => {
             expect(res.status).toHaveBeenCalledWith(401);
         });
 
-        it("returns 400 when projectId is missing", async () => {
-            const req = authedReq({ query: {}, body: { title: "New" } });
-            const res = mockRes();
-
-            await updateProjectController(req, res);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(projectService.updateProjectService).not.toHaveBeenCalled();
-        });
+        // See note in getProjectByIdController: a missing projectId is no
+        // longer reachable at the controller level once it's a route param.
 
         it("forwards projectId, userId, and body fields; returns 200", async () => {
             const req = authedReq({
-                query: { projectId: "p1" },
+                params: { projectId: "p1" },
                 body: { title: "Updated title" },
             });
             const res = mockRes();
             const updated = { id: "p1", title: "Updated title" };
             (projectService.updateProjectService as any).mockResolvedValue(
-                updated
+                updated,
             );
 
             await updateProjectController(req, res);
@@ -322,13 +320,30 @@ describe("project.controller", () => {
                     userId: "user123",
                     projectId: "p1",
                     title: "Updated title",
-                })
+                }),
             );
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith({
-                message: "Updated list successfully",
+                message: "Updated project successfully",
                 data: updated,
             });
+        });
+
+        it("returns 400 when projectId is not a string", async () => {
+            const req = authedReq({
+                params: { projectId: ["p1", "p2"] },
+                body: { title: "Updated title" },
+            });
+            const res = mockRes();
+
+            await updateProjectController(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Invalid project id",
+            });
+
+            expect(projectService.updateProjectService).not.toHaveBeenCalled();
         });
     });
 
@@ -336,7 +351,7 @@ describe("project.controller", () => {
         it("returns 401 when req.user is missing", async () => {
             const req = {
                 user: undefined,
-                query: {},
+                params: {},
             } as unknown as Request;
             const res = mockRes();
 
@@ -345,17 +360,8 @@ describe("project.controller", () => {
             expect(res.status).toHaveBeenCalledWith(401);
         });
 
-        it("returns 400 when projectId is missing", async () => {
-            const req = authedReq({ query: {} });
-            const res = mockRes();
-
-            await deleteProjectController(req, res);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-        });
-
         it("deletes the project and returns 200 with no data field", async () => {
-            const req = authedReq({ query: { projectId: "p1" } });
+            const req = authedReq({ params: { projectId: "p1" } });
             const res = mockRes();
 
             await deleteProjectController(req, res);
@@ -369,6 +375,22 @@ describe("project.controller", () => {
                 message: "Deleted project successfully",
             });
         });
+
+        it("returns 400 when projectId is not a string", async () => {
+            const req = authedReq({
+                params: { projectId: ["p1", "p2"] },
+            });
+            const res = mockRes();
+
+            await deleteProjectController(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Invalid project id",
+            });
+
+            expect(projectService.deleteProjectService).not.toHaveBeenCalled();
+        });
     });
 
     describe("getSharedProjectController", () => {
@@ -381,11 +403,11 @@ describe("project.controller", () => {
             expect(res.status).toHaveBeenCalledWith(401);
         });
 
-        it("returns a 'no shared projects' message when the list is empty", async () => {
+        it("returns a 'no shared projects' message when the project is empty", async () => {
             const req = authedReq();
             const res = mockRes();
             (projectService.getSharedProjectsService as any).mockResolvedValue(
-                []
+                [],
             );
 
             await getSharedProjectController(req, res);
@@ -401,7 +423,7 @@ describe("project.controller", () => {
             const res = mockRes();
             const shared = [{ id: "p1" }];
             (projectService.getSharedProjectsService as any).mockResolvedValue(
-                shared
+                shared,
             );
 
             await getSharedProjectController(req, res);
@@ -417,7 +439,7 @@ describe("project.controller", () => {
         it("returns 401 when req.user is missing", async () => {
             const req = {
                 user: undefined,
-                query: {},
+                params: {},
             } as unknown as Request;
             const res = mockRes();
 
@@ -426,17 +448,8 @@ describe("project.controller", () => {
             expect(res.status).toHaveBeenCalledWith(401);
         });
 
-        it("returns 400 when projectId is missing", async () => {
-            const req = authedReq({ query: {} });
-            const res = mockRes();
-
-            await leaveProjectController(req, res);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-        });
-
         it("leaves the project and returns 200 with no data field", async () => {
-            const req = authedReq({ query: { projectId: "p1" } });
+            const req = authedReq({ params: { projectId: "p1" } });
             const res = mockRes();
 
             await leaveProjectController(req, res);
@@ -449,6 +462,22 @@ describe("project.controller", () => {
             expect(res.json).toHaveBeenCalledWith({
                 message: "Left project successfully",
             });
+        });
+
+        it("returns 400 when projectId is not a string", async () => {
+            const req = authedReq({
+                params: { projectId: ["p1", "p2"] },
+            });
+            const res = mockRes();
+
+            await leaveProjectController(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Invalid project id",
+            });
+
+            expect(projectService.leaveProjectService).not.toHaveBeenCalled();
         });
     });
 });

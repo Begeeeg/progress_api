@@ -13,6 +13,7 @@ import {
 } from "./project.controller";
 import { validate } from "../../../../common/middleware/validatorDataDto";
 import { UpdateProjectSchema } from "./dtos/update.data.dto";
+import { taskRouter } from "../task";
 
 const router = express.Router();
 
@@ -20,26 +21,33 @@ router.post(
     "/",
     protectRoutes,
     validate(CreateProjectSchema),
-    createProjectController
+    createProjectController,
 );
 
 router.get("/", protectRoutes, getProjectsController);
 
+// Static paths must be registered before the "/:projectId" catch-all below,
+// or Express will try to match "search"/"shared" as a projectId value.
 router.get("/search", protectRoutes, getProjectSearchController);
-
-router.get("/getbyid", protectRoutes, getProjectByIdController);
-
-router.patch(
-    "/update",
-    protectRoutes,
-    validate(UpdateProjectSchema),
-    updateProjectController
-);
-
-router.delete("/delete", protectRoutes, deleteProjectController);
 
 router.get("/shared", protectRoutes, getSharedProjectController);
 
-router.delete("/leave", protectRoutes, leaveProjectController);
+router.get("/:projectId", protectRoutes, getProjectByIdController);
+
+router.patch(
+    "/:projectId",
+    protectRoutes,
+    validate(UpdateProjectSchema),
+    updateProjectController,
+);
+
+router.delete("/:projectId", protectRoutes, deleteProjectController);
+
+router.delete("/:projectId/leave", protectRoutes, leaveProjectController);
+
+// Tasks are a nested resource under a project: /:projectId/task/...
+// `mergeParams` on taskRouter (see task.router.ts) lets it read
+// `:projectId` from this parent route.
+router.use("/:projectId/task", taskRouter);
 
 export default router;

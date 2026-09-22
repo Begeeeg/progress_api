@@ -27,7 +27,6 @@ let TaskModel: typeof import("../task.model").default;
 let sendVerificationEmail: ReturnType<typeof vi.fn>;
 
 const PROJECT_BASE = "/api/v1/progress/project";
-const TASK_BASE = "/api/v1/progress/task";
 
 const futureISO = (daysAhead = 30) =>
     new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString();
@@ -96,7 +95,7 @@ const createTask = async (
     overrides: Record<string, unknown> = {},
 ) => {
     const res = await agent
-        .post(`${TASK_BASE}?projectId=${projectId}`)
+        .post(`${PROJECT_BASE}/${projectId}/task`)
         .send({ title: "A Task", deadline: futureISO(10), ...overrides });
     if (res.status !== 201) {
         throw new Error(
@@ -132,20 +131,10 @@ beforeEach(async () => {
 });
 
 describe("Task integration", () => {
-    describe("POST /api/v1/progress/task", () => {
+    describe("POST /api/v1/progress/project/:projectId/task", () => {
         it("requires authentication", async () => {
-            const res = await request(app).post(`${TASK_BASE}?projectId=x`);
+            const res = await request(app).post(`${PROJECT_BASE}/x/task`);
             expect(res.status).toBe(401);
-        });
-
-        it("returns 400 when projectId is missing", async () => {
-            const { agent } = await createVerifiedUser();
-
-            const res = await agent
-                .post(TASK_BASE)
-                .send({ title: "X", deadline: futureISO() });
-
-            expect(res.status).toBe(400);
         });
 
         it("creates a task with no assignees", async () => {
@@ -153,7 +142,7 @@ describe("Task integration", () => {
             const projectId = await createProject(agent);
 
             const res = await agent
-                .post(`${TASK_BASE}?projectId=${projectId}`)
+                .post(`${PROJECT_BASE}/${projectId}/task`)
                 .send({ title: "First task", deadline: futureISO(5) });
 
             expect(res.status).toBe(201);
@@ -173,7 +162,7 @@ describe("Task integration", () => {
             );
 
             const res = await stranger.agent
-                .post(`${TASK_BASE}?projectId=${projectId}`)
+                .post(`${PROJECT_BASE}/${projectId}/task`)
                 .send({ title: "Intruder task", deadline: futureISO(5) });
 
             expect(res.status).toBe(403);
@@ -184,7 +173,7 @@ describe("Task integration", () => {
             const projectId = await createProject(agent);
 
             const res = await agent
-                .post(`${TASK_BASE}?projectId=${projectId}`)
+                .post(`${PROJECT_BASE}/${projectId}/task`)
                 .send({ title: "Late", deadline: pastISO() });
 
             expect(res.status).toBe(400);
@@ -197,7 +186,7 @@ describe("Task integration", () => {
             });
 
             const res = await agent
-                .post(`${TASK_BASE}?projectId=${projectId}`)
+                .post(`${PROJECT_BASE}/${projectId}/task`)
                 .send({ title: "Too late", deadline: futureISO(30) });
 
             expect(res.status).toBe(400);
@@ -215,7 +204,7 @@ describe("Task integration", () => {
             });
 
             const res = await owner.agent
-                .post(`${TASK_BASE}?projectId=${projectId}`)
+                .post(`${PROJECT_BASE}/${projectId}/task`)
                 .send({
                     title: "Assigned",
                     deadline: futureISO(5),
@@ -232,7 +221,7 @@ describe("Task integration", () => {
             const projectId = await createProject(owner.agent);
 
             const res = await owner.agent
-                .post(`${TASK_BASE}?projectId=${projectId}`)
+                .post(`${PROJECT_BASE}/${projectId}/task`)
                 .send({
                     title: "Bad assignment",
                     deadline: futureISO(5),
@@ -247,7 +236,7 @@ describe("Task integration", () => {
             const projectId = await createProject(agent);
 
             const res = await agent
-                .post(`${TASK_BASE}?projectId=${projectId}`)
+                .post(`${PROJECT_BASE}/${projectId}/task`)
                 .send({
                     title: "Ghost assignment",
                     deadline: futureISO(5),
@@ -262,7 +251,7 @@ describe("Task integration", () => {
             const unknownId = new mongoose.Types.ObjectId().toString();
 
             const res = await agent
-                .post(`${TASK_BASE}?projectId=${unknownId}`)
+                .post(`${PROJECT_BASE}/${unknownId}/task`)
                 .send({ title: "X", deadline: futureISO(5) });
 
             expect(res.status).toBe(404);
@@ -272,16 +261,16 @@ describe("Task integration", () => {
             const { agent } = await createVerifiedUser();
 
             const res = await agent
-                .post(`${TASK_BASE}?projectId=not-a-valid-id`)
+                .post(`${PROJECT_BASE}/not-a-valid-id/task`)
                 .send({ title: "X", deadline: futureISO(5) });
 
-            expect(res.status).toBe(500);
+            expect(res.status).toBe(400);
         });
     });
 
-    describe("GET /api/v1/progress/task", () => {
+    describe("GET /api/v1/progress/project/:projectId/task", () => {
         it("requires authentication", async () => {
-            const res = await request(app).get(`${TASK_BASE}?projectId=x`);
+            const res = await request(app).get(`${PROJECT_BASE}/x/task`);
             expect(res.status).toBe(401);
         });
 
@@ -291,7 +280,7 @@ describe("Task integration", () => {
             await createTask(agent, projectId, { title: "Task A" });
             await createTask(agent, projectId, { title: "Task B" });
 
-            const res = await agent.get(`${TASK_BASE}?projectId=${projectId}`);
+            const res = await agent.get(`${PROJECT_BASE}/${projectId}/task`);
 
             expect(res.status).toBe(200);
             expect(res.body.data).toHaveLength(2);
@@ -306,27 +295,14 @@ describe("Task integration", () => {
             );
 
             const res = await stranger.agent.get(
-                `${TASK_BASE}?projectId=${projectId}`,
+                `${PROJECT_BASE}/${projectId}/task`,
             );
 
             expect(res.status).toBe(403);
         });
     });
 
-    describe("GET /api/v1/progress/task/id", () => {
-        it("returns 400 when either id is missing", async () => {
-            const { agent } = await createVerifiedUser();
-            const projectId = await createProject(agent);
-
-            expect(
-                (await agent.get(`${TASK_BASE}/id?projectId=${projectId}`))
-                    .status,
-            ).toBe(400);
-            expect((await agent.get(`${TASK_BASE}/id?taskId=x`)).status).toBe(
-                400,
-            );
-        });
-
+    describe("GET /api/v1/progress/project/:projectId/task/:taskId", () => {
         it("returns the task when it belongs to the given project", async () => {
             const { agent } = await createVerifiedUser();
             const projectId = await createProject(agent);
@@ -335,7 +311,7 @@ describe("Task integration", () => {
             });
 
             const res = await agent.get(
-                `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
+                `${PROJECT_BASE}/${projectId}/task/${taskId}`,
             );
 
             expect(res.status).toBe(200);
@@ -352,7 +328,7 @@ describe("Task integration", () => {
             });
 
             const res = await agent.get(
-                `${TASK_BASE}/id?projectId=${projectB}&taskId=${taskInA}`,
+                `${PROJECT_BASE}/${projectB}/task/${taskInA}`,
             );
 
             expect(res.status).toBe(404);
@@ -368,25 +344,37 @@ describe("Task integration", () => {
             );
 
             const res = await stranger.agent.get(
-                `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
+                `${PROJECT_BASE}/${projectId}/task/${taskId}`,
             );
 
             expect(res.status).toBe(403);
         });
 
-        it("returns 400 for a malformed taskId", async () => {
+        it("returns 500 for a malformed taskId", async () => {
             const { agent } = await createVerifiedUser();
             const projectId = await createProject(agent);
 
             const res = await agent.get(
-                `${TASK_BASE}/id?projectId=${projectId}&taskId=not-a-valid-id`,
+                `${PROJECT_BASE}/${projectId}/task/not-a-valid-id`,
             );
 
             expect(res.status).toBe(500);
         });
+
+        it("returns 400 for a malformed projectId", async () => {
+            const { agent } = await createVerifiedUser();
+            const projectId = await createProject(agent);
+            const taskId = await createTask(agent, projectId);
+
+            const res = await agent.get(
+                `${PROJECT_BASE}/not-a-valid-id/task/${taskId}`,
+            );
+
+            expect(res.status).toBe(400);
+        });
     });
 
-    describe("PATCH /api/v1/progress/task/id", () => {
+    describe("PATCH /api/v1/progress/project/:projectId/task/:taskId", () => {
         it("updates only the provided field", async () => {
             const { agent } = await createVerifiedUser();
             const projectId = await createProject(agent);
@@ -395,9 +383,7 @@ describe("Task integration", () => {
             });
 
             const res = await agent
-                .patch(
-                    `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
-                )
+                .patch(`${PROJECT_BASE}/${projectId}/task/${taskId}`)
                 .send({ title: "After" });
 
             expect(res.status).toBe(200);
@@ -410,9 +396,7 @@ describe("Task integration", () => {
             const taskId = await createTask(agent, projectId);
 
             const res = await agent
-                .patch(
-                    `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
-                )
+                .patch(`${PROJECT_BASE}/${projectId}/task/${taskId}`)
                 .send({});
 
             expect(res.status).toBe(400);
@@ -426,9 +410,7 @@ describe("Task integration", () => {
             const taskInA = await createTask(agent, projectA);
 
             const res = await agent
-                .patch(
-                    `${TASK_BASE}/id?projectId=${projectB}&taskId=${taskInA}`,
-                )
+                .patch(`${PROJECT_BASE}/${projectB}/task/${taskInA}`)
                 .send({ title: "Hijacked" });
 
             expect(res.status).toBe(404);
@@ -444,23 +426,21 @@ describe("Task integration", () => {
             });
 
             const res = await agent
-                .patch(
-                    `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
-                )
+                .patch(`${PROJECT_BASE}/${projectId}/task/${taskId}`)
                 .send({ deadline: futureISO(30) });
 
             expect(res.status).toBe(400);
         });
     });
 
-    describe("DELETE /api/v1/progress/task/id", () => {
+    describe("DELETE /api/v1/progress/project/:projectId/task/:taskId", () => {
         it("deletes the task when it belongs to the given project", async () => {
             const { agent } = await createVerifiedUser();
             const projectId = await createProject(agent);
             const taskId = await createTask(agent, projectId);
 
             const res = await agent.delete(
-                `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
+                `${PROJECT_BASE}/${projectId}/task/${taskId}`,
             );
 
             expect(res.status).toBe(200);
@@ -480,7 +460,7 @@ describe("Task integration", () => {
             });
 
             const res = await agent.delete(
-                `${TASK_BASE}/id?projectId=${projectB}&taskId=${taskInA}`,
+                `${PROJECT_BASE}/${projectB}/task/${taskInA}`,
             );
 
             expect(res.status).toBe(404);
@@ -497,7 +477,7 @@ describe("Task integration", () => {
             );
 
             const res = await stranger.agent.delete(
-                `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
+                `${PROJECT_BASE}/${projectId}/task/${taskId}`,
             );
 
             expect(res.status).toBe(403);

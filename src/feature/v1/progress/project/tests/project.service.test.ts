@@ -42,6 +42,7 @@ import {
 } from "../../../../../common/error/errorStatusCode";
 
 const FIXED_NOW = new Date("2026-01-01T00:00:00.000Z");
+const VALID_PROJECT_ID = "507f1f77bcf86cd799439011";
 
 // Memoized so that calling idEq("owner1") anywhere in this file always
 // returns the SAME object reference. This matters because several tests
@@ -91,7 +92,7 @@ describe("project.service", () => {
             (UserModel.findById as any).mockResolvedValue(null);
 
             await expect(
-                createProjectService(baseInput as any)
+                createProjectService(baseInput as any),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -105,7 +106,7 @@ describe("project.service", () => {
                 createProjectService({
                     ...baseInput,
                     dueDate: new Date("not-a-date"),
-                } as any)
+                } as any),
             ).rejects.toThrow(BadRequestError);
         });
 
@@ -119,7 +120,7 @@ describe("project.service", () => {
                 createProjectService({
                     ...baseInput,
                     dueDate: new Date("2025-01-01T00:00:00.000Z"),
-                } as any)
+                } as any),
             ).rejects.toThrow(BadRequestError);
         });
 
@@ -145,7 +146,7 @@ describe("project.service", () => {
             expect(validateMembers).toHaveBeenCalledWith(
                 "owner1",
                 ProjectType.PERSONAL,
-                undefined
+                undefined,
             );
             expect(result.title).toBe("My Project");
             expect(result.remainingDays).toBe(9);
@@ -157,14 +158,14 @@ describe("project.service", () => {
                 _id: idEq("owner1"),
             });
             (validateMembers as any).mockRejectedValue(
-                new BadRequestError("Personal projects cannot have members")
+                new BadRequestError("Personal projects cannot have members"),
             );
 
             await expect(
                 createProjectService({
                     ...baseInput,
                     members: ["bob"],
-                } as any)
+                } as any),
             ).rejects.toThrow(BadRequestError);
             expect(ProjectModel.create).not.toHaveBeenCalled();
         });
@@ -194,7 +195,7 @@ describe("project.service", () => {
             expect(validateMembers).toHaveBeenCalledWith(
                 "owner1",
                 ProjectType.PERSONAL,
-                undefined
+                undefined,
             );
         });
     });
@@ -204,7 +205,7 @@ describe("project.service", () => {
             (UserModel.findById as any).mockResolvedValue(null);
 
             await expect(
-                getProjectsService({ userId: "missing" })
+                getProjectsService({ userId: "missing" }),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -256,7 +257,7 @@ describe("project.service", () => {
             (UserModel.findById as any).mockResolvedValue(null);
 
             await expect(
-                getProjectByIdService({ userId: "missing", projectId: "p1" })
+                getProjectByIdService({ userId: "missing", projectId: "p1" }),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -269,7 +270,10 @@ describe("project.service", () => {
             });
 
             await expect(
-                getProjectByIdService({ userId: "owner1", projectId: "p1" })
+                getProjectByIdService({
+                    userId: "owner1",
+                    projectId: VALID_PROJECT_ID,
+                }),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -286,7 +290,10 @@ describe("project.service", () => {
             });
 
             await expect(
-                getProjectByIdService({ userId: "outsider", projectId: "p1" })
+                getProjectByIdService({
+                    userId: "outsider",
+                    projectId: VALID_PROJECT_ID,
+                }),
             ).rejects.toThrow(ForbiddenError);
         });
 
@@ -296,7 +303,7 @@ describe("project.service", () => {
             });
             (ProjectModel.findById as any).mockReturnValue({
                 populate: vi.fn().mockResolvedValue({
-                    _id: "p1",
+                    _id: VALID_PROJECT_ID,
                     userId: idEq("owner1"),
                     title: "Mine",
                     type: ProjectType.PERSONAL,
@@ -308,7 +315,7 @@ describe("project.service", () => {
 
             const result = await getProjectByIdService({
                 userId: "owner1",
-                projectId: "p1",
+                projectId: VALID_PROJECT_ID,
             });
 
             expect(result.isOwner).toBe(true);
@@ -320,7 +327,7 @@ describe("project.service", () => {
             });
             (ProjectModel.findById as any).mockReturnValue({
                 populate: vi.fn().mockResolvedValue({
-                    _id: "p1",
+                    _id: VALID_PROJECT_ID,
                     userId: idEq("owner1"),
                     title: "Team project",
                     type: ProjectType.TEAM,
@@ -332,7 +339,7 @@ describe("project.service", () => {
 
             const result = await getProjectByIdService({
                 userId: "member1",
-                projectId: "p1",
+                projectId: VALID_PROJECT_ID,
             });
 
             expect(result.isOwner).toBe(false);
@@ -344,7 +351,7 @@ describe("project.service", () => {
             });
             (ProjectModel.findById as any).mockReturnValue({
                 populate: vi.fn().mockResolvedValue({
-                    _id: "p1",
+                    _id: VALID_PROJECT_ID,
                     userId: idEq("owner1"),
                     title: "Solo project",
                     type: ProjectType.PERSONAL,
@@ -361,8 +368,8 @@ describe("project.service", () => {
             await expect(
                 getProjectByIdService({
                     userId: "stranger",
-                    projectId: "p1",
-                })
+                    projectId: VALID_PROJECT_ID,
+                }),
             ).rejects.toThrow(ForbiddenError);
         });
     });
@@ -372,7 +379,7 @@ describe("project.service", () => {
             (UserModel.findById as any).mockResolvedValue(null);
 
             await expect(
-                getProjectSearchService({ userId: "missing" })
+                getProjectSearchService({ userId: "missing" }),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -441,7 +448,7 @@ describe("project.service", () => {
             const range = calledWith.$and[1].dueDate;
             expect(range.$gte.getHours()).toBe(0);
             expect(range.$lt.getTime() - range.$gte.getTime()).toBe(
-                24 * 60 * 60 * 1000
+                24 * 60 * 60 * 1000,
             );
         });
 
@@ -492,14 +499,14 @@ describe("project.service", () => {
                     id: "p1",
                     title: "Mine",
                     isOwner: true,
-                })
+                }),
             );
             expect(result[1]).toEqual(
                 expect.objectContaining({
                     id: "p2",
                     title: "Shared",
                     isOwner: false,
-                })
+                }),
             );
         });
     });
@@ -522,7 +529,7 @@ describe("project.service", () => {
                 updateProjectService({
                     userId: "missing",
                     projectId: "p1",
-                } as any)
+                } as any),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -536,7 +543,7 @@ describe("project.service", () => {
                 updateProjectService({
                     userId: "owner1",
                     projectId: "missing",
-                } as any)
+                } as any),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -551,7 +558,7 @@ describe("project.service", () => {
                     userId: "someoneelse",
                     projectId: "p1",
                     title: "New title",
-                } as any)
+                } as any),
             ).rejects.toThrow(ForbiddenError);
         });
 
@@ -565,7 +572,7 @@ describe("project.service", () => {
                 updateProjectService({
                     userId: "owner1",
                     projectId: "p1",
-                } as any)
+                } as any),
             ).rejects.toThrow(BadRequestError);
             expect(ProjectModel.findByIdAndUpdate).not.toHaveBeenCalled();
         });
@@ -589,7 +596,7 @@ describe("project.service", () => {
             expect(ProjectModel.findByIdAndUpdate).toHaveBeenCalledWith(
                 "p1",
                 { title: "New title" },
-                { new: true }
+                { new: true },
             );
             expect(validateMembers).not.toHaveBeenCalled();
         });
@@ -613,7 +620,7 @@ describe("project.service", () => {
             expect(ProjectModel.findByIdAndUpdate).toHaveBeenCalledWith(
                 "p1",
                 { documentation: "Updated docs" },
-                { new: true }
+                { new: true },
             );
         });
 
@@ -636,7 +643,7 @@ describe("project.service", () => {
             expect(ProjectModel.findByIdAndUpdate).toHaveBeenCalledWith(
                 "p1",
                 { githubRepo: "new/repo" },
-                { new: true }
+                { new: true },
             );
         });
 
@@ -659,7 +666,7 @@ describe("project.service", () => {
             expect(ProjectModel.findByIdAndUpdate).toHaveBeenCalledWith(
                 "p1",
                 { status: ProjectStatus.INACTIVE },
-                { new: true }
+                { new: true },
             );
         });
 
@@ -674,7 +681,7 @@ describe("project.service", () => {
                     userId: "owner1",
                     projectId: "p1",
                     dueDate: new Date("not-a-date"),
-                } as any)
+                } as any),
             ).rejects.toThrow(BadRequestError);
         });
 
@@ -689,7 +696,7 @@ describe("project.service", () => {
                     userId: "owner1",
                     projectId: "p1",
                     dueDate: new Date("2020-01-01T00:00:00.000Z"),
-                } as any)
+                } as any),
             ).rejects.toThrow(BadRequestError);
         });
 
@@ -713,7 +720,7 @@ describe("project.service", () => {
             expect(ProjectModel.findByIdAndUpdate).toHaveBeenCalledWith(
                 "p1",
                 { dueDate: newDueDate },
-                { new: true }
+                { new: true },
             );
             expect(result.dueDate).toEqual(newDueDate);
             expect(result.remainingDays).toBeGreaterThan(0);
@@ -766,7 +773,7 @@ describe("project.service", () => {
             expect(validateMembers).toHaveBeenCalledWith(
                 "owner1",
                 ProjectType.TEAM, // resolved from the existing project type
-                ["bob"]
+                ["bob"],
             );
         });
 
@@ -776,7 +783,9 @@ describe("project.service", () => {
             });
             (ProjectModel.findById as any).mockResolvedValue(baseProject); // PERSONAL
             (validateMembers as any).mockRejectedValue(
-                new BadRequestError("Team projects require at least one member")
+                new BadRequestError(
+                    "Team projects require at least one member",
+                ),
             );
 
             await expect(
@@ -784,7 +793,7 @@ describe("project.service", () => {
                     userId: "owner1",
                     projectId: "p1",
                     type: ProjectType.TEAM,
-                } as any)
+                } as any),
             ).rejects.toThrow(BadRequestError);
         });
 
@@ -813,7 +822,7 @@ describe("project.service", () => {
                     type: ProjectType.TEAM,
                     members: [idEq("m1")],
                 },
-                { new: true }
+                { new: true },
             );
             expect(result.type).toBe(ProjectType.TEAM);
         });
@@ -849,7 +858,7 @@ describe("project.service", () => {
                     userId: "owner1",
                     projectId: "p1",
                     title: "New title",
-                } as any)
+                } as any),
             ).rejects.toThrow(NotFoundError);
         });
     });
@@ -859,7 +868,7 @@ describe("project.service", () => {
             (UserModel.findById as any).mockResolvedValue(null);
 
             await expect(
-                deleteProjectService({ userId: "missing", projectId: "p1" })
+                deleteProjectService({ userId: "missing", projectId: "p1" }),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -870,7 +879,7 @@ describe("project.service", () => {
             (ProjectModel.findById as any).mockResolvedValue(null);
 
             await expect(
-                deleteProjectService({ userId: "owner1", projectId: "p1" })
+                deleteProjectService({ userId: "owner1", projectId: "p1" }),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -884,7 +893,10 @@ describe("project.service", () => {
             });
 
             await expect(
-                deleteProjectService({ userId: "someoneelse", projectId: "p1" })
+                deleteProjectService({
+                    userId: "someoneelse",
+                    projectId: "p1",
+                }),
             ).rejects.toThrow(ForbiddenError);
             expect(ProjectModel.deleteOne).not.toHaveBeenCalled();
         });
@@ -911,7 +923,7 @@ describe("project.service", () => {
             (UserModel.findById as any).mockResolvedValue(null);
 
             await expect(
-                getSharedProjectsService({ userId: "missing" })
+                getSharedProjectsService({ userId: "missing" }),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -952,7 +964,7 @@ describe("project.service", () => {
             (ProjectModel.findById as any).mockResolvedValue(null);
 
             await expect(
-                leaveProjectService({ userId: "member1", projectId: "p1" })
+                leaveProjectService({ userId: "member1", projectId: "p1" }),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -963,7 +975,7 @@ describe("project.service", () => {
             });
 
             await expect(
-                leaveProjectService({ userId: "owner1", projectId: "p1" })
+                leaveProjectService({ userId: "owner1", projectId: "p1" }),
             ).rejects.toThrow(BadRequestError);
         });
 
@@ -974,7 +986,7 @@ describe("project.service", () => {
             });
 
             await expect(
-                leaveProjectService({ userId: "outsider", projectId: "p1" })
+                leaveProjectService({ userId: "outsider", projectId: "p1" }),
             ).rejects.toThrow(BadRequestError);
         });
 
@@ -988,7 +1000,7 @@ describe("project.service", () => {
             });
 
             await expect(
-                leaveProjectService({ userId: "outsider", projectId: "p1" })
+                leaveProjectService({ userId: "outsider", projectId: "p1" }),
             ).rejects.toThrow(BadRequestError);
         });
 

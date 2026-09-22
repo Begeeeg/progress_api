@@ -26,7 +26,6 @@ let app: typeof import("../../../../../app").default;
 let sendVerificationEmail: ReturnType<typeof vi.fn>;
 
 const PROJECT_BASE = "/api/v1/progress/project";
-const TASK_BASE = "/api/v1/progress/task";
 
 const futureISO = (daysAhead = 30) =>
     new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString();
@@ -106,7 +105,7 @@ describe("Task E2E journeys", () => {
 
         // 2. Owner creates a task assigned to the member
         const createRes = await owner
-            .post(`${TASK_BASE}?projectId=${projectId}`)
+            .post(`${PROJECT_BASE}/${projectId}/task`)
             .send({
                 title: "Write launch doc",
                 deadline: futureISO(14),
@@ -118,7 +117,7 @@ describe("Task E2E journeys", () => {
         // 3. The member (not the owner) can see the task through the
         // project they belong to
         const memberView = await member.get(
-            `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
+            `${PROJECT_BASE}/${projectId}/task/${taskId}`,
         );
         expect(memberView.status).toBe(200);
         expect(memberView.body.data.title).toBe("Write launch doc");
@@ -127,45 +126,41 @@ describe("Task E2E journeys", () => {
         // is denied, distinctly from a "not found" (403, since the project
         // itself is inaccessible to them)
         const strangerView = await stranger.get(
-            `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
+            `${PROJECT_BASE}/${projectId}/task/${taskId}`,
         );
         expect(strangerView.status).toBe(403);
 
         // 5. The member updates the task's status
         const statusUpdate = await member
-            .patch(`${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`)
+            .patch(`${PROJECT_BASE}/${projectId}/task/${taskId}`)
             .send({ status: "in_progress" });
         expect(statusUpdate.status).toBe(200);
         expect(statusUpdate.body.data.status).toBe("in_progress");
 
         // 6. The owner sees the updated status too
         const ownerView = await owner.get(
-            `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
+            `${PROJECT_BASE}/${projectId}/task/${taskId}`,
         );
         expect(ownerView.body.data.status).toBe("in_progress");
 
         // 7. The owner reassigns the task to themself
         const reassign = await owner
-            .patch(`${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`)
+            .patch(`${PROJECT_BASE}/${projectId}/task/${taskId}`)
             .send({ assignedTo: ["ownernow"] });
         expect(reassign.status).toBe(200);
         expect(reassign.body.data.assignedTo).toHaveLength(1);
 
         // 8. The task list for the project now reflects all changes
-        const finalList = await owner.get(
-            `${TASK_BASE}?projectId=${projectId}`,
-        );
+        const finalList = await owner.get(`${PROJECT_BASE}/${projectId}/task`);
         expect(finalList.body.data).toHaveLength(1);
         expect(finalList.body.data[0].status).toBe("in_progress");
 
         // 9. Owner deletes the task
         const deleteRes = await owner.delete(
-            `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
+            `${PROJECT_BASE}/${projectId}/task/${taskId}`,
         );
         expect(deleteRes.status).toBe(200);
-        const emptyList = await owner.get(
-            `${TASK_BASE}?projectId=${projectId}`,
-        );
+        const emptyList = await owner.get(`${PROJECT_BASE}/${projectId}/task`);
         expect(emptyList.body.data).toEqual([]);
     });
 
@@ -189,7 +184,7 @@ describe("Task E2E journeys", () => {
 
         // A sensitive task lives only in Alpha
         const taskRes = await owner
-            .post(`${TASK_BASE}?projectId=${alphaId}`)
+            .post(`${PROJECT_BASE}/${alphaId}/task`)
             .send({ title: "Alpha secret", deadline: futureISO(10) });
         const alphaTaskId = taskRes.body.data.id;
 
@@ -198,23 +193,23 @@ describe("Task E2E journeys", () => {
         // with Beta's projectId — access to a project id must not leak
         // access to tasks that don't actually belong to it.
         const readAttempt = await owner.get(
-            `${TASK_BASE}/id?projectId=${betaId}&taskId=${alphaTaskId}`,
+            `${PROJECT_BASE}/${betaId}/task/${alphaTaskId}`,
         );
         expect(readAttempt.status).toBe(404);
 
         const updateAttempt = await owner
-            .patch(`${TASK_BASE}/id?projectId=${betaId}&taskId=${alphaTaskId}`)
+            .patch(`${PROJECT_BASE}/${betaId}/task/${alphaTaskId}`)
             .send({ title: "Tampered" });
         expect(updateAttempt.status).toBe(404);
 
         const deleteAttempt = await owner.delete(
-            `${TASK_BASE}/id?projectId=${betaId}&taskId=${alphaTaskId}`,
+            `${PROJECT_BASE}/${betaId}/task/${alphaTaskId}`,
         );
         expect(deleteAttempt.status).toBe(404);
 
         // The task is untouched and still reachable through its real project
         const realRead = await owner.get(
-            `${TASK_BASE}/id?projectId=${alphaId}&taskId=${alphaTaskId}`,
+            `${PROJECT_BASE}/${alphaId}/task/${alphaTaskId}`,
         );
         expect(realRead.status).toBe(200);
         expect(realRead.body.data.title).toBe("Alpha secret");
@@ -232,7 +227,7 @@ describe("Task E2E journeys", () => {
 
         // Task is created validly, well within the project's original window
         const taskRes = await owner
-            .post(`${TASK_BASE}?projectId=${projectId}`)
+            .post(`${PROJECT_BASE}/${projectId}/task`)
             .send({ title: "Mid-project task", deadline: futureISO(40) });
         expect(taskRes.status).toBe(201);
         const taskId = taskRes.body.data.id;
@@ -240,21 +235,21 @@ describe("Task E2E journeys", () => {
         // Owner tightens the project's own due date to something earlier
         // than the task's existing deadline
         const tighten = await owner
-            .patch(`${PROJECT_BASE}/update?projectId=${projectId}`)
+            .patch(`${PROJECT_BASE}/${projectId}`)
             .send({ dueDate: futureISO(10) });
         expect(tighten.status).toBe(200);
 
         // The existing task record itself is untouched (no cascading
         // re-validation on unrelated updates)...
         const stillThere = await owner.get(
-            `${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`,
+            `${PROJECT_BASE}/${projectId}/task/${taskId}`,
         );
         expect(stillThere.status).toBe(200);
 
         // ...but any *new* attempt to push the task's deadline out to its
         // old value now correctly fails against the tightened project window
         const pushOut = await owner
-            .patch(`${TASK_BASE}/id?projectId=${projectId}&taskId=${taskId}`)
+            .patch(`${PROJECT_BASE}/${projectId}/task/${taskId}`)
             .send({ deadline: futureISO(40) });
         expect(pushOut.status).toBe(400);
     });

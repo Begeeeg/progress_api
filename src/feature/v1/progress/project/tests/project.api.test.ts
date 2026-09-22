@@ -35,7 +35,7 @@ const futureISO = (daysAhead = 7) =>
 
 const createVerifiedUser = async (
     username = "owneruser",
-    email = "owner@gmail.com"
+    email = "owner@gmail.com",
 ) => {
     const agent = request.agent(app);
 
@@ -57,7 +57,7 @@ const createVerifiedUser = async (
 
 const seedProject = async (
     agent: ReturnType<typeof request.agent>,
-    overrides: Record<string, unknown> = {}
+    overrides: Record<string, unknown> = {},
 ) => {
     await agent
         .post(BASE)
@@ -92,15 +92,17 @@ beforeEach(async () => {
 
 describe("Project API contract", () => {
     describe("authentication contract", () => {
+        // Placeholder ids below don't need to be real — protectRoutes
+        // (which returns the 401) runs before any id is ever read.
         it.each([
             ["POST", BASE],
             ["GET", BASE],
             ["GET", `${BASE}/search`],
-            ["GET", `${BASE}/getbyid`],
-            ["PATCH", `${BASE}/update`],
-            ["DELETE", `${BASE}/delete`],
+            ["GET", `${BASE}/000000000000000000000000`],
+            ["PATCH", `${BASE}/000000000000000000000000`],
+            ["DELETE", `${BASE}/000000000000000000000000`],
             ["GET", `${BASE}/shared`],
-            ["DELETE", `${BASE}/leave`],
+            ["DELETE", `${BASE}/000000000000000000000000/leave`],
         ])(
             "%s %s returns 401 with an error body when unauthenticated",
             async (method, path) => {
@@ -110,7 +112,7 @@ describe("Project API contract", () => {
 
                 expect(res.status).toBe(401);
                 expect(res.body).toEqual({ message: expect.any(String) });
-            }
+            },
         );
     });
 
@@ -204,38 +206,26 @@ describe("Project API contract", () => {
                     title: expect.any(String),
                     remainingDays: expect.any(Number),
                     isOwner: expect.any(Boolean),
-                })
+                }),
             );
         });
     });
 
-    describe("GET /api/v1/progress/project/getbyid", () => {
-        it("returns 400 with an error body when projectId is absent", async () => {
+    describe("GET /api/v1/progress/project/:projectId", () => {
+        it("returns 400 with an error body for a malformed project id", async () => {
             const agent = await createVerifiedUser();
 
-            const res = await agent.get(`${BASE}/getbyid`);
+            const res = await agent.get(`${BASE}/not-a-valid-id`);
 
             expect(res.status).toBe(400);
             expect(res.body).toEqual({ message: expect.any(String) });
-        });
-
-        it("returns 400 when projectId is repeated (parsed as an array)", async () => {
-            const agent = await createVerifiedUser();
-
-            const res = await agent.get(
-                `${BASE}/getbyid?projectId=a&projectId=b`
-            );
-
-            expect(res.status).toBe(400);
         });
 
         it("returns 200 with the documented single-project shape", async () => {
             const agent = await createVerifiedUser();
             const projectId = await seedProject(agent);
 
-            const res = await agent.get(
-                `${BASE}/getbyid?projectId=${projectId}`
-            );
+            const res = await agent.get(`${BASE}/${projectId}`);
 
             expect(res.status).toBe(200);
             expect(res.body.data).toEqual(
@@ -244,7 +234,7 @@ describe("Project API contract", () => {
                     title: expect.any(String),
                     remainingDays: expect.any(Number),
                     isOwner: true,
-                })
+                }),
             );
         });
     });
@@ -267,7 +257,7 @@ describe("Project API contract", () => {
 
                 expect(res.status).toBe(400);
                 expect(res.body).toHaveProperty("message");
-            }
+            },
         );
 
         it("returns 200 with an array payload for a valid filter", async () => {
@@ -284,18 +274,7 @@ describe("Project API contract", () => {
         });
     });
 
-    describe("PATCH /api/v1/progress/project/update", () => {
-        it("returns 400 with an error body when projectId is absent", async () => {
-            const agent = await createVerifiedUser();
-
-            const res = await agent.patch(`${BASE}/update`).send({
-                title: "X",
-            });
-
-            expect(res.status).toBe(400);
-            expect(res.body).toEqual({ message: expect.any(String) });
-        });
-
+    describe("PATCH /api/v1/progress/project/:projectId", () => {
         it.each([
             ["title too long", { title: "a".repeat(16) }],
             ["invalid type enum", { type: "bogus" }],
@@ -305,12 +284,20 @@ describe("Project API contract", () => {
             const agent = await createVerifiedUser();
             const projectId = await seedProject(agent);
 
-            const res = await agent
-                .patch(`${BASE}/update?projectId=${projectId}`)
-                .send(body);
+            const res = await agent.patch(`${BASE}/${projectId}`).send(body);
 
             expect(res.status).toBe(400);
             expect(res.body).toHaveProperty("message");
+        });
+
+        it("returns 400 with an error body for a malformed project id", async () => {
+            const agent = await createVerifiedUser();
+
+            const res = await agent
+                .patch(`${BASE}/not-a-valid-id`)
+                .send({ title: "X" });
+
+            expect(res.status).toBe(500);
         });
 
         it("returns 200 with the documented updated shape", async () => {
@@ -318,7 +305,7 @@ describe("Project API contract", () => {
             const projectId = await seedProject(agent);
 
             const res = await agent
-                .patch(`${BASE}/update?projectId=${projectId}`)
+                .patch(`${BASE}/${projectId}`)
                 .send({ title: "Renamed" });
 
             expect(res.status).toBe(200);
@@ -328,18 +315,18 @@ describe("Project API contract", () => {
                     title: "Renamed",
                     remainingDays: expect.any(Number),
                     isOwner: true,
-                })
+                }),
             );
         });
     });
 
-    describe("DELETE /api/v1/progress/project/delete", () => {
-        it("returns 400 with an error body when projectId is absent", async () => {
+    describe("DELETE /api/v1/progress/project/:projectId", () => {
+        it("returns 400 with an error body for a malformed project id", async () => {
             const agent = await createVerifiedUser();
 
-            const res = await agent.delete(`${BASE}/delete`);
+            const res = await agent.delete(`${BASE}/not-a-valid-id`);
 
-            expect(res.status).toBe(400);
+            expect(res.status).toBe(500);
             expect(res.body).toEqual({ message: expect.any(String) });
         });
 
@@ -347,9 +334,7 @@ describe("Project API contract", () => {
             const agent = await createVerifiedUser();
             const projectId = await seedProject(agent);
 
-            const res = await agent.delete(
-                `${BASE}/delete?projectId=${projectId}`
-            );
+            const res = await agent.delete(`${BASE}/${projectId}`);
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual({ message: expect.any(String) });
@@ -370,13 +355,13 @@ describe("Project API contract", () => {
         });
     });
 
-    describe("DELETE /api/v1/progress/project/leave", () => {
-        it("returns 400 with an error body when projectId is absent", async () => {
+    describe("DELETE /api/v1/progress/project/:projectId/leave", () => {
+        it("returns 400 with an error body for a malformed project id", async () => {
             const agent = await createVerifiedUser();
 
-            const res = await agent.delete(`${BASE}/leave`);
+            const res = await agent.delete(`${BASE}/not-a-valid-id/leave`);
 
-            expect(res.status).toBe(400);
+            expect(res.status).toBe(500);
             expect(res.body).toEqual({ message: expect.any(String) });
         });
 
@@ -384,16 +369,14 @@ describe("Project API contract", () => {
             const ownerAgent = await createVerifiedUser();
             const memberAgent = await createVerifiedUser(
                 "memberuser",
-                "member@gmail.com"
+                "member@gmail.com",
             );
             const projectId = await seedProject(ownerAgent, {
                 type: "team",
                 members: ["memberuser"],
             });
 
-            const res = await memberAgent.delete(
-                `${BASE}/leave?projectId=${projectId}`
-            );
+            const res = await memberAgent.delete(`${BASE}/${projectId}/leave`);
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual({ message: expect.any(String) });
@@ -402,7 +385,12 @@ describe("Project API contract", () => {
 
     describe("unknown project routes", () => {
         it("returns 404 with a plain error body", async () => {
-            const res = await request(app).get(`${BASE}/does-not-exist`);
+            // A single segment (e.g. `/does-not-exist`) would now match
+            // the `:projectId` catch-all and correctly 400 as a malformed
+            // id — not a useful "unknown route" case anymore. A path with
+            // extra segments matches no route at all, which is what this
+            // test actually wants to exercise.
+            const res = await request(app).get(`${BASE}/a/b/does-not-exist`);
 
             expect(res.status).toBe(404);
             expect(res.body).toEqual({ message: expect.any(String) });

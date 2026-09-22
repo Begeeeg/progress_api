@@ -29,7 +29,7 @@ const mockRes = () => {
 const authedReq = (overrides: Partial<Request> = {}): Request =>
     ({
         user: { _id: { toString: () => "user1" } },
-        query: {},
+        params: {},
         body: {},
         ...overrides,
     }) as unknown as Request;
@@ -39,9 +39,18 @@ beforeEach(() => {
 });
 
 describe("task.controller", () => {
+    // Note throughout this file: `projectId`/`taskId` now arrive via
+    // `req.params`, supplied by Express from the nested route
+    // `/project/:projectId/task/:taskId`. A missing or array-shaped id is
+    // no longer a scenario reachable at the controller level the way it
+    // was with `req.query` — Express simply won't match a route with a
+    // missing path segment, so those cases were removed here and are
+    // instead implicitly covered by hitting the real routes in the
+    // integration/API test suites.
+
     describe("createTaskController", () => {
         it("returns 401 when req.user is missing", async () => {
-            const req = { user: undefined, query: {} } as unknown as Request;
+            const req = { user: undefined, params: {} } as unknown as Request;
             const res = mockRes();
 
             await createTaskController(req, res);
@@ -50,19 +59,22 @@ describe("task.controller", () => {
             expect(taskService.createTaskService).not.toHaveBeenCalled();
         });
 
-        it("returns 400 when projectId is missing", async () => {
-            const req = authedReq({ query: {} });
+        it("returns 400 when projectId is not a string", async () => {
+            const req = authedReq({ params: { projectId: ["project1"] } });
             const res = mockRes();
 
             await createTaskController(req, res);
 
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Invalid project id",
+            });
             expect(taskService.createTaskService).not.toHaveBeenCalled();
         });
 
         it("forwards body fields, projectId, and the authenticated userId; returns 201", async () => {
             const req = authedReq({
-                query: { projectId: "project1" },
+                params: { projectId: "project1" },
                 body: {
                     title: "New task",
                     notes: "notes",
@@ -96,7 +108,7 @@ describe("task.controller", () => {
 
     describe("getTasksController", () => {
         it("returns 401 when req.user is missing", async () => {
-            const req = { user: undefined, query: {} } as unknown as Request;
+            const req = { user: undefined, params: {} } as unknown as Request;
             const res = mockRes();
 
             await getTasksController(req, res);
@@ -104,17 +116,21 @@ describe("task.controller", () => {
             expect(res.status).toHaveBeenCalledWith(401);
         });
 
-        it("returns 400 when projectId is missing", async () => {
-            const req = authedReq({ query: {} });
+        it("returns 400 when projectId is not a string", async () => {
+            const req = authedReq({ params: { projectId: ["project1"] } });
             const res = mockRes();
 
             await getTasksController(req, res);
 
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Invalid project id",
+            });
+            expect(taskService.getTasksService).not.toHaveBeenCalled();
         });
 
         it("returns 200 with the project's tasks", async () => {
-            const req = authedReq({ query: { projectId: "project1" } });
+            const req = authedReq({ params: { projectId: "project1" } });
             const res = mockRes();
             const tasks = [{ id: "task1" }];
             (taskService.getTasksService as any).mockResolvedValue(tasks);
@@ -135,7 +151,7 @@ describe("task.controller", () => {
 
     describe("getTaskByIdController", () => {
         it("returns 401 when req.user is missing", async () => {
-            const req = { user: undefined, query: {} } as unknown as Request;
+            const req = { user: undefined, params: {} } as unknown as Request;
             const res = mockRes();
 
             await getTaskByIdController(req, res);
@@ -143,38 +159,39 @@ describe("task.controller", () => {
             expect(res.status).toHaveBeenCalledWith(401);
         });
 
-        it("returns 400 when projectId is missing", async () => {
-            const req = authedReq({ query: { taskId: "task1" } });
-            const res = mockRes();
-
-            await getTaskByIdController(req, res);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-        });
-
-        it("returns 400 when taskId is missing", async () => {
-            const req = authedReq({ query: { projectId: "project1" } });
-            const res = mockRes();
-
-            await getTaskByIdController(req, res);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-        });
-
-        it("returns 400 when either id is an array", async () => {
+        it("returns 400 when projectId is not a string", async () => {
             const req = authedReq({
-                query: { projectId: ["a", "b"], taskId: "task1" },
+                params: { projectId: ["project1"], taskId: "task1" },
             });
             const res = mockRes();
 
             await getTaskByIdController(req, res);
 
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Invalid project id",
+            });
+            expect(taskService.getTaskByIdService).not.toHaveBeenCalled();
+        });
+
+        it("returns 400 when taskId is not a string", async () => {
+            const req = authedReq({
+                params: { projectId: "project1", taskId: ["task1"] },
+            });
+            const res = mockRes();
+
+            await getTaskByIdController(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Invalid project id",
+            });
+            expect(taskService.getTaskByIdService).not.toHaveBeenCalled();
         });
 
         it("returns 200 with the requested task", async () => {
             const req = authedReq({
-                query: { projectId: "project1", taskId: "task1" },
+                params: { projectId: "project1", taskId: "task1" },
             });
             const res = mockRes();
             const task = { id: "task1", title: "Mine" };
@@ -197,7 +214,7 @@ describe("task.controller", () => {
 
     describe("updateTaskController", () => {
         it("returns 401 when req.user is missing", async () => {
-            const req = { user: undefined, query: {} } as unknown as Request;
+            const req = { user: undefined, params: {} } as unknown as Request;
             const res = mockRes();
 
             await updateTaskController(req, res);
@@ -205,8 +222,10 @@ describe("task.controller", () => {
             expect(res.status).toHaveBeenCalledWith(401);
         });
 
-        it("returns 400 with the correct message when projectId is missing", async () => {
-            const req = authedReq({ query: { taskId: "task1" } });
+        it("returns 400 when projectId is not a string", async () => {
+            const req = authedReq({
+                params: { projectId: ["project1"], taskId: "task1" },
+            });
             const res = mockRes();
 
             await updateTaskController(req, res);
@@ -215,23 +234,27 @@ describe("task.controller", () => {
             expect(res.json).toHaveBeenCalledWith({
                 message: "Invalid project id",
             });
+            expect(taskService.updateTaskService).not.toHaveBeenCalled();
         });
 
-        it("returns 400 when taskId is missing", async () => {
-            const req = authedReq({ query: { projectId: "project1" } });
+        it("returns 400 when taskId is not a string", async () => {
+            const req = authedReq({
+                params: { projectId: "project1", taskId: ["task1"] },
+            });
             const res = mockRes();
 
             await updateTaskController(req, res);
 
             expect(res.status).toHaveBeenCalledWith(400);
             expect(res.json).toHaveBeenCalledWith({
-                message: "Invalid task id",
+                message: "Invalid project id",
             });
+            expect(taskService.updateTaskService).not.toHaveBeenCalled();
         });
 
         it("forwards projectId, taskId, userId, and body fields; returns 200", async () => {
             const req = authedReq({
-                query: { projectId: "project1", taskId: "task1" },
+                params: { projectId: "project1", taskId: "task1" },
                 body: { title: "Renamed", status: TaskStatus.COMPLETED },
             });
             const res = mockRes();
@@ -260,7 +283,7 @@ describe("task.controller", () => {
 
     describe("deleteTaskController", () => {
         it("returns 401 when req.user is missing", async () => {
-            const req = { user: undefined, query: {} } as unknown as Request;
+            const req = { user: undefined, params: {} } as unknown as Request;
             const res = mockRes();
 
             await deleteTaskController(req, res);
@@ -268,27 +291,39 @@ describe("task.controller", () => {
             expect(res.status).toHaveBeenCalledWith(401);
         });
 
-        it("returns 400 when projectId is missing", async () => {
-            const req = authedReq({ query: { taskId: "task1" } });
+        it("returns 400 when projectId is not a string", async () => {
+            const req = authedReq({
+                params: { projectId: ["project1"], taskId: "task1" },
+            });
             const res = mockRes();
 
             await deleteTaskController(req, res);
 
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Invalid project id",
+            });
+            expect(taskService.deleteTaskService).not.toHaveBeenCalled();
         });
 
-        it("returns 400 when taskId is missing", async () => {
-            const req = authedReq({ query: { projectId: "project1" } });
+        it("returns 400 when taskId is not a string", async () => {
+            const req = authedReq({
+                params: { projectId: "project1", taskId: ["task1"] },
+            });
             const res = mockRes();
 
             await deleteTaskController(req, res);
 
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Invalid project id",
+            });
+            expect(taskService.deleteTaskService).not.toHaveBeenCalled();
         });
 
         it("deletes the task and returns 200 with no data field", async () => {
             const req = authedReq({
-                query: { projectId: "project1", taskId: "task1" },
+                params: { projectId: "project1", taskId: "task1" },
             });
             const res = mockRes();
 

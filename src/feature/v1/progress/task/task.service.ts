@@ -37,7 +37,7 @@ export const createTaskService = async ({
 
     if (parsedDeadline.getTime() > project.dueDate.getTime()) {
         throw new BadRequestError(
-            "Task deadline cannot be later than the list's due date",
+            "Task deadline cannot be later than the project's due date",
         );
     }
 
@@ -232,7 +232,7 @@ export const updateTaskService = async ({
 
         if (parsedDeadline.getTime() > project.dueDate.getTime()) {
             throw new BadRequestError(
-                "Task deadline cannot be later than the list's due date",
+                "Task deadline cannot be later than the project's due date",
             );
         }
 

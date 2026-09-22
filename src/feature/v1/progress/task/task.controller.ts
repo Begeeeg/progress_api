@@ -10,7 +10,7 @@ export const createTaskController = async (
         return;
     }
 
-    const { projectId } = req.query;
+    const { projectId } = req.params;
 
     if (typeof projectId !== "string") {
         res.status(400).json({ message: "Invalid project id" });
@@ -42,7 +42,7 @@ export const getTasksController = async (
         return;
     }
 
-    const { projectId } = req.query;
+    const { projectId } = req.params;
 
     if (typeof projectId !== "string") {
         res.status(400).json({ message: "Invalid project id" });
@@ -69,7 +69,7 @@ export const getTaskByIdController = async (
         return;
     }
 
-    const { projectId, taskId } = req.query;
+    const { projectId, taskId } = req.params;
 
     if (typeof projectId !== "string") {
         res.status(400).json({ message: "Invalid project id" });
@@ -77,7 +77,7 @@ export const getTaskByIdController = async (
     }
 
     if (typeof taskId !== "string") {
-        res.status(400).json({ message: "Invalid task id" });
+        res.status(400).json({ message: "Invalid project id" });
         return;
     }
 
@@ -102,7 +102,7 @@ export const updateTaskController = async (
         return;
     }
 
-    const { projectId, taskId } = req.query;
+    const { projectId, taskId } = req.params;
 
     if (typeof projectId !== "string") {
         res.status(400).json({ message: "Invalid project id" });
@@ -110,7 +110,7 @@ export const updateTaskController = async (
     }
 
     if (typeof taskId !== "string") {
-        res.status(400).json({ message: "Invalid task id" });
+        res.status(400).json({ message: "Invalid project id" });
         return;
     }
 
@@ -140,7 +140,7 @@ export const deleteTaskController = async (
         return;
     }
 
-    const { projectId, taskId } = req.query;
+    const { projectId, taskId } = req.params;
 
     if (typeof projectId !== "string") {
         res.status(400).json({ message: "Invalid project id" });
@@ -148,7 +148,7 @@ export const deleteTaskController = async (
     }
 
     if (typeof taskId !== "string") {
-        res.status(400).json({ message: "Invalid task id" });
+        res.status(400).json({ message: "Invalid project id" });
         return;
     }
 

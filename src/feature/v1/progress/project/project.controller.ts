@@ -11,7 +11,7 @@ import { ProjectStatus, ProjectType } from "./types/project.enum";
  */
 export const createProjectController = async (
     req: Request,
-    res: Response
+    res: Response,
 ): Promise<void> => {
     // Ensure the controller only operates on an authenticated account.
     if (!req.user) {
@@ -32,7 +32,7 @@ export const createProjectController = async (
     });
 
     res.status(201).json({
-        message: "Created list successfully",
+        message: "Created project successfully",
         data: project,
     });
 };
@@ -42,7 +42,7 @@ export const createProjectController = async (
  */
 export const getProjectsController = async (
     req: Request,
-    res: Response
+    res: Response,
 ): Promise<void> => {
     // Prevent unauthenticated requests from reaching the service layer.
     if (!req.user) {
@@ -56,7 +56,7 @@ export const getProjectsController = async (
     });
 
     res.status(200).json({
-        message: "Fetched lists successfully",
+        message: "Fetched projects successfully",
         data: projects,
     });
 };
@@ -67,7 +67,7 @@ export const getProjectsController = async (
  */
 export const getProjectByIdController = async (
     req: Request,
-    res: Response
+    res: Response,
 ): Promise<void> => {
     // Project access requires an authenticated user.
     if (!req.user) {
@@ -75,10 +75,10 @@ export const getProjectByIdController = async (
         return;
     }
 
-    const { projectId } = req.query;
+    // Route params are always a single decoded string, so no typeof guard
+    // is needed here the way it was for query strings.
+    const { projectId } = req.params;
 
-    // Express query parameters are not guaranteed to be strings, so validate
-    // the value before passing it to the service layer.
     if (typeof projectId !== "string") {
         res.status(400).json({ message: "Invalid project id" });
         return;
@@ -90,7 +90,7 @@ export const getProjectByIdController = async (
     });
 
     res.status(200).json({
-        message: "Fetched list successfully",
+        message: "Fetched project successfully",
         data: project,
     });
 };
@@ -103,7 +103,7 @@ export const getProjectByIdController = async (
  */
 export const getProjectSearchController = async (
     req: Request,
-    res: Response
+    res: Response,
 ): Promise<void> => {
     if (!req.user) {
         res.status(401).json({ message: "Unauthorized" });
@@ -127,8 +127,8 @@ export const getProjectSearchController = async (
     ) {
         throw new BadRequestError(
             `Invalid type filter. Must be one of: ${Object.values(
-                ProjectType
-            ).join(", ")}`
+                ProjectType,
+            ).join(", ")}`,
         );
     }
 
@@ -141,8 +141,8 @@ export const getProjectSearchController = async (
     ) {
         throw new BadRequestError(
             `Invalid status filter. Must be one of: ${Object.values(
-                ProjectStatus
-            ).join(", ")}`
+                ProjectStatus,
+            ).join(", ")}`,
         );
     }
 
@@ -173,7 +173,7 @@ export const getProjectSearchController = async (
     });
 
     res.status(200).json({
-        message: "Fetched lists successfully",
+        message: "Fetched projects successfully",
         data: projects,
     });
 };
@@ -186,16 +186,15 @@ export const getProjectSearchController = async (
  */
 export const updateProjectController = async (
     req: Request,
-    res: Response
+    res: Response,
 ): Promise<void> => {
     if (!req.user) {
         res.status(401).json({ message: "Unauthorized" });
         return;
     }
 
-    const { projectId } = req.query;
+    const { projectId } = req.params;
 
-    // Require a single project ID before forwarding the request to the service.
     if (typeof projectId !== "string") {
         res.status(400).json({ message: "Invalid project id" });
         return;
@@ -216,7 +215,7 @@ export const updateProjectController = async (
     });
 
     res.status(200).json({
-        message: "Updated list successfully",
+        message: "Updated project successfully",
         data: project,
     });
 };
@@ -228,16 +227,15 @@ export const updateProjectController = async (
  */
 export const deleteProjectController = async (
     req: Request,
-    res: Response
+    res: Response,
 ): Promise<void> => {
     if (!req.user) {
         res.status(401).json({ message: "Unauthorized" });
         return;
     }
 
-    const { projectId } = req.query;
+    const { projectId } = req.params;
 
-    // Validate the project identifier before passing it to the service.
     if (typeof projectId !== "string") {
         res.status(400).json({ message: "Invalid project id" });
         return;
@@ -260,7 +258,7 @@ export const deleteProjectController = async (
  */
 export const getSharedProjectController = async (
     req: Request,
-    res: Response
+    res: Response,
 ) => {
     if (!req.user) {
         return res.status(401).json({
@@ -291,16 +289,15 @@ export const getSharedProjectController = async (
  */
 export const leaveProjectController = async (
     req: Request,
-    res: Response
+    res: Response,
 ): Promise<void> => {
     if (!req.user) {
         res.status(401).json({ message: "Unauthorized" });
         return;
     }
 
-    const { projectId } = req.query;
+    const { projectId } = req.params;
 
-    // Ensure the project identifier is a single string before calling the service.
     if (typeof projectId !== "string") {
         res.status(400).json({ message: "Invalid project id" });
         return;

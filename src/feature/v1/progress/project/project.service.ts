@@ -15,6 +15,7 @@ import {
     GetProjectsData,
     UpdateProjectData,
 } from "./types/project.types";
+import mongoose from "mongoose";
 
 /**
  * Creates a project for the authenticated user.
@@ -45,7 +46,7 @@ export const createProjectService = async ({
     const validatedMembers = await validateMembers(
         userId,
         resolvedType,
-        members
+        members,
     );
 
     const parsedDueDate = new Date(dueDate);
@@ -59,7 +60,7 @@ export const createProjectService = async ({
     // Calculate the remaining days from the current time rather than
     // storing a derived value that could become stale after creation.
     const remainingDays = Math.ceil(
-        (parsedDueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        (parsedDueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
     );
 
     // Projects cannot be created with a due date that has already passed.
@@ -121,7 +122,7 @@ export const getProjectsService = async ({ userId }: GetProjectsData) => {
         // Remaining days is calculated at read time so the value reflects
         // the current date instead of becoming stale.
         const remainingDays = Math.ceil(
-            (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+            (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
         );
 
         // The populated owner ID is compared with the authenticated user's
@@ -158,11 +159,15 @@ export const getProjectByIdService = async ({
         throw new NotFoundError("User not found");
     }
 
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+        throw new BadRequestError("Invalid project id");
+    }
+
     const project = await ProjectModel.findById(projectId).populate(
         // Populate member information so the caller receives member identities
         // rather than only their database references.
         "members",
-        "_id username"
+        "_id username",
     );
 
     if (!project) {
@@ -172,7 +177,7 @@ export const getProjectByIdService = async ({
     // Calculate the remaining time when the project is requested instead
     // of relying on a persisted value that would become outdated.
     const remainingDays = Math.ceil(
-        (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
     );
 
     const isOwner = project.userId.equals(user._id);
@@ -180,13 +185,13 @@ export const getProjectByIdService = async ({
     // Membership is checked independently from ownership because the owner
     // and assigned members have different relationships with the project.
     const isMember = (project.members ?? []).some((memberId) =>
-        memberId.equals(user._id)
+        memberId.equals(user._id),
     );
 
     // Having a valid project ID alone does not grant access; the requester
     // must be either the owner or an assigned member.
     if (!isOwner && !isMember) {
-        throw new ForbiddenError("You do not have access to this list");
+        throw new ForbiddenError("You do not have access to this project");
     }
 
     return {
@@ -261,7 +266,7 @@ export const getProjectSearchService = async ({
     const projects = await ProjectModel.find(
         // Use $and only when additional filters were supplied; otherwise
         // the base ownership/membership condition can be queried directly.
-        conditions.length > 1 ? { $and: conditions } : conditions[0]
+        conditions.length > 1 ? { $and: conditions } : conditions[0],
     )
         .populate("userId", "_id username")
         .sort({ createdAt: -1 });
@@ -269,7 +274,7 @@ export const getProjectSearchService = async ({
     return projects.map((project) => {
         // Recalculate the remaining days for the current request.
         const remainingDays = Math.ceil(
-            (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+            (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
         );
 
         const isOwner = project.userId._id.equals(user._id);
@@ -323,7 +328,7 @@ export const updateProjectService = async ({
     // grants access to the project but does not grant update permissions.
     if (!isOwner) {
         throw new ForbiddenError(
-            "Only the project owner can update this project"
+            "Only the project owner can update this project",
         );
     }
 
@@ -359,7 +364,7 @@ export const updateProjectService = async ({
         const validatedMembers = await validateMembers(
             userId,
             resolvedType,
-            members
+            members,
         );
         updateFields.members = validatedMembers;
     }
@@ -380,7 +385,7 @@ export const updateProjectService = async ({
         // Calculate the requested due date relative to the current time
         // so past dates cannot be assigned to the project.
         const remainingDays = Math.ceil(
-            (parsedDueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+            (parsedDueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
         );
 
         if (remainingDays < 0) {
@@ -394,14 +399,14 @@ export const updateProjectService = async ({
     // operation that would leave the project unchanged.
     if (Object.keys(updateFields).length === 0) {
         throw new BadRequestError(
-            "At least one field must be provided to update"
+            "At least one field must be provided to update",
         );
     }
 
     const updatedProject = await ProjectModel.findByIdAndUpdate(
         projectId,
         updateFields,
-        { new: true }
+        { new: true },
     );
 
     if (!updatedProject) {
@@ -413,7 +418,7 @@ export const updateProjectService = async ({
     const remainingDays = updatedProject.dueDate
         ? Math.ceil(
               (updatedProject.dueDate.getTime() - Date.now()) /
-                  (1000 * 60 * 60 * 24)
+                  (1000 * 60 * 60 * 24),
           )
         : undefined;
 
@@ -455,7 +460,9 @@ export const deleteProjectService = async ({
     // Project membership does not grant deletion authority; only the
     // stored project owner is allowed to permanently remove the project.
     if (!project.userId.equals(user._id)) {
-        throw new ForbiddenError("Only the project owner can delete this list");
+        throw new ForbiddenError(
+            "Only the project owner can delete this project",
+        );
     }
 
     await ProjectModel.deleteOne({ _id: project._id });
@@ -486,7 +493,7 @@ export const getSharedProjectsService = async ({ userId }: GetProjectsData) => {
     return project.map((project) => {
         // Calculate remaining time at request time to keep the value current.
         const remainingDays = Math.ceil(
-            (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+            (project.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
         );
 
         return {
@@ -505,7 +512,7 @@ export const getSharedProjectsService = async ({ userId }: GetProjectsData) => {
 };
 
 /**
- * Removes the authenticated user from a project's member list.
+ * Removes the authenticated user from a project's member project.
  *
  * The project owner cannot leave because ownership is represented separately
  * from membership and is required for the project to remain manageable.

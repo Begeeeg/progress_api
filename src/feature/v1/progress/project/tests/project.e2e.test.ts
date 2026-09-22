@@ -52,22 +52,22 @@ const onboardUser = async (username: string, email: string) => {
         throw new Error(
             `onboardUser: register failed for ${email} — ` +
                 `status ${registerRes.status}, body: ${JSON.stringify(
-                    registerRes.body
-                )}`
+                    registerRes.body,
+                )}`,
         );
     }
 
     const calls = sendVerificationEmail.mock.calls;
     const token = calls[calls.length - 1][2] as string;
     const verifyRes = await agent.get(
-        `/api/v1/identity/auth/verify-email?token=${token}`
+        `/api/v1/identity/auth/verify-email?token=${token}`,
     );
     if (verifyRes.status !== 200) {
         throw new Error(
             `onboardUser: verify-email failed for ${email} — ` +
                 `status ${verifyRes.status}, body: ${JSON.stringify(
-                    verifyRes.body
-                )}`
+                    verifyRes.body,
+                )}`,
         );
     }
 
@@ -135,59 +135,45 @@ describe("Project E2E journeys", () => {
         expect(ownerShared.body.data).toEqual([]);
 
         // 5. The member can read the project detail, but cannot update it
-        const memberRead = await member.get(
-            `${BASE}/getbyid?projectId=${projectId}`
-        );
+        const memberRead = await member.get(`${BASE}/${projectId}`);
         expect(memberRead.status).toBe(200);
 
         const memberUpdate = await member
-            .patch(`${BASE}/update?projectId=${projectId}`)
+            .patch(`${BASE}/${projectId}`)
             .send({ title: "Hijacked" });
         expect(memberUpdate.status).toBe(403);
 
         // 6. The owner updates it, and the change is visible to the member
         const ownerUpdate = await owner
-            .patch(`${BASE}/update?projectId=${projectId}`)
+            .patch(`${BASE}/${projectId}`)
             .send({ title: "Renamed", status: "inactive" });
         expect(ownerUpdate.status).toBe(200);
         expect(ownerUpdate.body.data.title).toBe("Renamed");
 
-        const memberReread = await member.get(
-            `${BASE}/getbyid?projectId=${projectId}`
-        );
+        const memberReread = await member.get(`${BASE}/${projectId}`);
         expect(memberReread.body.data.title).toBe("Renamed");
         expect(memberReread.body.data.status).toBe("inactive");
 
         // 7. The member leaves
-        const leaveRes = await member.delete(
-            `${BASE}/leave?projectId=${projectId}`
-        );
+        const leaveRes = await member.delete(`${BASE}/${projectId}/leave`);
         expect(leaveRes.status).toBe(200);
 
         // 8. It's gone from every one of the member's views, and they can
         // no longer read it at all
         expect((await member.get(BASE)).body.data).toEqual([]);
         expect((await member.get(`${BASE}/shared`)).body.data).toEqual([]);
-        const readAfterLeave = await member.get(
-            `${BASE}/getbyid?projectId=${projectId}`
-        );
+        const readAfterLeave = await member.get(`${BASE}/${projectId}`);
         expect(readAfterLeave.status).toBe(403);
 
         // 9. The owner still has it, now with no members
-        const ownerAfter = await owner.get(
-            `${BASE}/getbyid?projectId=${projectId}`
-        );
+        const ownerAfter = await owner.get(`${BASE}/${projectId}`);
         expect(ownerAfter.status).toBe(200);
         expect(ownerAfter.body.data.members).toHaveLength(0);
 
         // 10. The owner deletes it, and it's gone for good
-        const deleteRes = await owner.delete(
-            `${BASE}/delete?projectId=${projectId}`
-        );
+        const deleteRes = await owner.delete(`${BASE}/${projectId}`);
         expect(deleteRes.status).toBe(200);
-        expect(
-            (await owner.get(`${BASE}/getbyid?projectId=${projectId}`)).status
-        ).toBe(404);
+        expect((await owner.get(`${BASE}/${projectId}`)).status).toBe(404);
         expect((await owner.get(BASE)).body.data).toEqual([]);
     });
 
@@ -232,26 +218,20 @@ describe("Project E2E journeys", () => {
 
         // Bob cannot read, update, or delete Alice's project
         const aliceProjectId = aliceList.body.data[0].id;
-        expect(
-            (await bob.get(`${BASE}/getbyid?projectId=${aliceProjectId}`))
-                .status
-        ).toBe(403);
+        expect((await bob.get(`${BASE}/${aliceProjectId}`)).status).toBe(403);
         expect(
             (
                 await bob
-                    .patch(`${BASE}/update?projectId=${aliceProjectId}`)
+                    .patch(`${BASE}/${aliceProjectId}`)
                     .send({ title: "Stolen" })
-            ).status
+            ).status,
         ).toBe(403);
-        expect(
-            (await bob.delete(`${BASE}/delete?projectId=${aliceProjectId}`))
-                .status
-        ).toBe(403);
+        expect((await bob.delete(`${BASE}/${aliceProjectId}`)).status).toBe(
+            403,
+        );
 
         // Alice's project survived all of it
-        const aliceAfter = await alice.get(
-            `${BASE}/getbyid?projectId=${aliceProjectId}`
-        );
+        const aliceAfter = await alice.get(`${BASE}/${aliceProjectId}`);
         expect(aliceAfter.status).toBe(200);
         expect(aliceAfter.body.data.title).toBe("Alice Work");
     });
@@ -262,7 +242,7 @@ describe("Project E2E journeys", () => {
 
         // 1. Owner finds the teammate through the public user search
         const searchRes = await request(app).get(
-            "/api/v1/identity/user/search?username=teammate"
+            "/api/v1/identity/user/search?username=teammate",
         );
         expect(searchRes.status).toBe(200);
         expect(searchRes.body.data).toHaveLength(1);
@@ -301,13 +281,13 @@ describe("Project E2E journeys", () => {
 
         // 2. Converting to team without members must be rejected
         const badConvert = await owner
-            .patch(`${BASE}/update?projectId=${projectId}`)
+            .patch(`${BASE}/${projectId}`)
             .send({ type: "team" });
         expect(badConvert.status).toBe(400);
 
         // 3. Converting with a member succeeds
         const convert = await owner
-            .patch(`${BASE}/update?projectId=${projectId}`)
+            .patch(`${BASE}/${projectId}`)
             .send({ type: "team", members: ["membernow"] });
         expect(convert.status).toBe(200);
         expect(convert.body.data.type).toBe("team");

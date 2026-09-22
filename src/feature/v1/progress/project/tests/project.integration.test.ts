@@ -40,22 +40,50 @@ const pastISO = () =>
 /** Registers + verifies a user, returning a cookie-persisting agent. */
 const createVerifiedUser = async (
     username = "owneruser",
-    email = "owner@gmail.com"
+    email = "owner@gmail.com",
 ) => {
     const agent = request.agent(app);
 
-    await agent.post("/api/v1/identity/auth/register").send({
-        username,
-        givenname: "given",
-        surname: "surname",
-        email,
-        password: "Password1",
-        confirmPassword: "Password1",
-    });
+    const registerRes = await agent
+        .post("/api/v1/identity/auth/register")
+        .send({
+            username,
+            givenname: "given",
+            surname: "surname",
+            email,
+            password: "Password1",
+            confirmPassword: "Password1",
+        });
+
+    if (registerRes.status !== 201) {
+        throw new Error(
+            `createVerifiedUser: register failed for ${email} — ` +
+                `status ${registerRes.status}, body: ${JSON.stringify(
+                    registerRes.body,
+                )}`,
+        );
+    }
 
     const calls = sendVerificationEmail.mock.calls;
+    if (calls.length === 0) {
+        throw new Error(
+            `createVerifiedUser: register returned 201 for ${email} but ` +
+                `sendVerificationEmail was never called — check the mock wiring.`,
+        );
+    }
     const token = calls[calls.length - 1][2] as string;
-    await agent.get(`/api/v1/identity/auth/verify-email?token=${token}`);
+
+    const verifyRes = await agent.get(
+        `/api/v1/identity/auth/verify-email?token=${token}`,
+    );
+    if (verifyRes.status !== 200) {
+        throw new Error(
+            `createVerifiedUser: verify-email failed for ${email} — ` +
+                `status ${verifyRes.status}, body: ${JSON.stringify(
+                    verifyRes.body,
+                )}`,
+        );
+    }
 
     const me = await agent.get("/api/v1/identity/user/me");
 
@@ -64,7 +92,7 @@ const createVerifiedUser = async (
 
 const createProject = async (
     agent: ReturnType<typeof request.agent>,
-    overrides: Record<string, unknown> = {}
+    overrides: Record<string, unknown> = {},
 ) =>
     agent.post(BASE).send({
         title: "My Project",
@@ -121,7 +149,7 @@ describe("Project integration", () => {
                     title: "Personal",
                     type: "personal",
                     isOwner: true,
-                })
+                }),
             );
             expect(res.body.data.remainingDays).toBeGreaterThan(0);
 
@@ -196,7 +224,7 @@ describe("Project integration", () => {
             const { agent } = await createVerifiedUser();
             const member = await createVerifiedUser(
                 "memberuser",
-                "member@gmail.com"
+                "member@gmail.com",
             );
 
             const res = await createProject(agent, {
@@ -239,7 +267,7 @@ describe("Project integration", () => {
             const { agent: ownerAgent } = await createVerifiedUser();
             const member = await createVerifiedUser(
                 "memberuser",
-                "member@gmail.com"
+                "member@gmail.com",
             );
             await createProject(ownerAgent, {
                 title: "Team",
@@ -259,7 +287,7 @@ describe("Project integration", () => {
 
             const stranger = await createVerifiedUser(
                 "stranger",
-                "stranger@gmail.com"
+                "stranger@gmail.com",
             );
             const res = await stranger.agent.get(BASE);
 
@@ -267,14 +295,13 @@ describe("Project integration", () => {
         });
     });
 
-    describe("GET /api/v1/progress/project/getbyid", () => {
-        it("returns 400 when projectId is missing", async () => {
-            const { agent } = await createVerifiedUser();
-
-            const res = await agent.get(`${BASE}/getbyid`);
-
-            expect(res.status).toBe(400);
-        });
+    describe("GET /api/v1/progress/project/:projectId", () => {
+        // Note: with `:projectId` as a route param, there's no longer a
+        // "missing projectId" case to test here the way there was with
+        // `?projectId=`. Hitting the bare base path (`GET /project`) now
+        // matches the *list* route instead (see the describe block above),
+        // and a malformed/unknown id is covered by the "unknown project id"
+        // and API-contract malformed-id tests instead.
 
         it("returns the project for its owner", async () => {
             const { agent } = await createVerifiedUser();
@@ -282,9 +309,7 @@ describe("Project integration", () => {
             const list = await agent.get(BASE);
             const projectId = list.body.data[0].id;
 
-            const res = await agent.get(
-                `${BASE}/getbyid?projectId=${projectId}`
-            );
+            const res = await agent.get(`${BASE}/${projectId}`);
 
             expect(res.status).toBe(200);
             expect(res.body.data.title).toBe("Findable");
@@ -299,11 +324,9 @@ describe("Project integration", () => {
 
             const stranger = await createVerifiedUser(
                 "stranger",
-                "stranger@gmail.com"
+                "stranger@gmail.com",
             );
-            const res = await stranger.agent.get(
-                `${BASE}/getbyid?projectId=${projectId}`
-            );
+            const res = await stranger.agent.get(`${BASE}/${projectId}`);
 
             expect(res.status).toBe(403);
         });
@@ -312,11 +335,17 @@ describe("Project integration", () => {
             const { agent } = await createVerifiedUser();
             const unknownId = new mongoose.Types.ObjectId().toString();
 
-            const res = await agent.get(
-                `${BASE}/getbyid?projectId=${unknownId}`
-            );
+            const res = await agent.get(`${BASE}/${unknownId}`);
 
             expect(res.status).toBe(404);
+        });
+
+        it("returns 400 for a malformed (non-ObjectId) project id", async () => {
+            const { agent } = await createVerifiedUser();
+
+            const res = await agent.get(`${BASE}/not-a-valid-id`);
+
+            expect(res.status).toBe(400);
         });
     });
 
@@ -397,7 +426,7 @@ describe("Project integration", () => {
         });
     });
 
-    describe("PATCH /api/v1/progress/project/update", () => {
+    describe("PATCH /api/v1/progress/project/:projectId", () => {
         it("updates only the provided field", async () => {
             const { agent } = await createVerifiedUser();
             await createProject(agent, { title: "Before" });
@@ -405,7 +434,7 @@ describe("Project integration", () => {
             const projectId = list.body.data[0].id;
 
             const res = await agent
-                .patch(`${BASE}/update?projectId=${projectId}`)
+                .patch(`${BASE}/${projectId}`)
                 .send({ title: "After" });
 
             expect(res.status).toBe(200);
@@ -418,9 +447,7 @@ describe("Project integration", () => {
             const list = await agent.get(BASE);
             const projectId = list.body.data[0].id;
 
-            const res = await agent
-                .patch(`${BASE}/update?projectId=${projectId}`)
-                .send({});
+            const res = await agent.patch(`${BASE}/${projectId}`).send({});
 
             expect(res.status).toBe(400);
         });
@@ -443,7 +470,7 @@ describe("Project integration", () => {
             });
 
             const res = await member
-                .patch(`${BASE}/update?projectId=${projectId}`)
+                .patch(`${BASE}/${projectId}`)
                 .send({ title: "Hijacked" });
 
             expect(res.status).toBe(403);
@@ -456,33 +483,21 @@ describe("Project integration", () => {
             const projectId = list.body.data[0].id;
 
             const res = await agent
-                .patch(`${BASE}/update?projectId=${projectId}`)
+                .patch(`${BASE}/${projectId}`)
                 .send({ dueDate: pastISO() });
-
-            expect(res.status).toBe(400);
-        });
-
-        it("returns 400 when projectId is missing", async () => {
-            const { agent } = await createVerifiedUser();
-
-            const res = await agent
-                .patch(`${BASE}/update`)
-                .send({ title: "X" });
 
             expect(res.status).toBe(400);
         });
     });
 
-    describe("DELETE /api/v1/progress/project/delete", () => {
+    describe("DELETE /api/v1/progress/project/:projectId", () => {
         it("deletes a project owned by the requester", async () => {
             const { agent } = await createVerifiedUser();
             await createProject(agent, { title: "Doomed" });
             const list = await agent.get(BASE);
             const projectId = list.body.data[0].id;
 
-            const res = await agent.delete(
-                `${BASE}/delete?projectId=${projectId}`
-            );
+            const res = await agent.delete(`${BASE}/${projectId}`);
 
             expect(res.status).toBe(200);
             expect(await ProjectModel.findById(projectId)).toBeNull();
@@ -496,22 +511,12 @@ describe("Project integration", () => {
 
             const stranger = await createVerifiedUser(
                 "stranger",
-                "stranger@gmail.com"
+                "stranger@gmail.com",
             );
-            const res = await stranger.agent.delete(
-                `${BASE}/delete?projectId=${projectId}`
-            );
+            const res = await stranger.agent.delete(`${BASE}/${projectId}`);
 
             expect(res.status).toBe(403);
             expect(await ProjectModel.findById(projectId)).not.toBeNull();
-        });
-
-        it("returns 400 when projectId is missing", async () => {
-            const { agent } = await createVerifiedUser();
-
-            const res = await agent.delete(`${BASE}/delete`);
-
-            expect(res.status).toBe(400);
         });
     });
 
@@ -530,7 +535,7 @@ describe("Project integration", () => {
             const { agent: ownerAgent } = await createVerifiedUser();
             const member = await createVerifiedUser(
                 "memberuser",
-                "member@gmail.com"
+                "member@gmail.com",
             );
             await createProject(ownerAgent, {
                 title: "Shared",
@@ -546,12 +551,12 @@ describe("Project integration", () => {
         });
     });
 
-    describe("DELETE /api/v1/progress/project/leave", () => {
+    describe("DELETE /api/v1/progress/project/:projectId/leave", () => {
         it("removes the member from the project", async () => {
             const { agent: ownerAgent } = await createVerifiedUser();
             const member = await createVerifiedUser(
                 "memberuser",
-                "member@gmail.com"
+                "member@gmail.com",
             );
             await createProject(ownerAgent, {
                 title: "Team",
@@ -561,9 +566,7 @@ describe("Project integration", () => {
             const list = await ownerAgent.get(BASE);
             const projectId = list.body.data[0].id;
 
-            const res = await member.agent.delete(
-                `${BASE}/leave?projectId=${projectId}`
-            );
+            const res = await member.agent.delete(`${BASE}/${projectId}/leave`);
 
             expect(res.status).toBe(200);
 
@@ -582,9 +585,7 @@ describe("Project integration", () => {
             const list = await ownerAgent.get(BASE);
             const projectId = list.body.data[0].id;
 
-            const res = await ownerAgent.delete(
-                `${BASE}/leave?projectId=${projectId}`
-            );
+            const res = await ownerAgent.delete(`${BASE}/${projectId}/leave`);
 
             expect(res.status).toBe(400);
         });
@@ -597,19 +598,11 @@ describe("Project integration", () => {
 
             const stranger = await createVerifiedUser(
                 "stranger",
-                "stranger@gmail.com"
+                "stranger@gmail.com",
             );
             const res = await stranger.agent.delete(
-                `${BASE}/leave?projectId=${projectId}`
+                `${BASE}/${projectId}/leave`,
             );
-
-            expect(res.status).toBe(400);
-        });
-
-        it("returns 400 when projectId is missing", async () => {
-            const { agent } = await createVerifiedUser();
-
-            const res = await agent.delete(`${BASE}/leave`);
 
             expect(res.status).toBe(400);
         });
