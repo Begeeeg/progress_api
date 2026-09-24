@@ -5,7 +5,7 @@ import {
     githubConnectController,
 } from "./github.controller";
 
-const router = express.Router({ mergeParams: true });
+const router = express.Router();
 
 router.get("/connect", protectRoutes, githubConnectController);
 router.get("/callback", protectRoutes, githubCallbackController);
