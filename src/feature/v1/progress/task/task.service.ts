@@ -349,3 +349,41 @@ export const deleteTaskService = async ({
 
     await TaskModel.deleteOne({ _id: task._id });
 };
+
+export const leaveTaskService = async ({
+    userId,
+    projectId,
+    taskId,
+}: GetTaskByIdData) => {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+        throw new NotFoundError("User not found");
+    }
+
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+        throw new NotFoundError("Task not found");
+    }
+
+    const project = await getProjectByIdService({ userId, projectId });
+
+    if (task.projectId.toString() !== project.id.toString()) {
+        throw new NotFoundError("Task not found");
+    }
+
+    const assignedTo = task.assignedTo ?? [];
+
+    const isAssigned = assignedTo.some((assignee) =>
+        assignee.equals(userId),
+    );
+
+    if (!isAssigned) {
+        throw new BadRequestError("You are not assigned to this task.");
+    }
+
+    task.assignedTo = assignedTo.filter(
+        (assignee) => !assignee.equals(userId),
+    );
+
+    await task.save();
+};

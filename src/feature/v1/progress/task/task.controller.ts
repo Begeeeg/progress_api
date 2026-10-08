@@ -162,3 +162,35 @@ export const deleteTaskController = async (
         message: "Deleted task successfully",
     });
 };
+
+export const leaveTaskController = async (
+    req: Request,
+    res: Response,
+): Promise<void> => {
+    if (!req.user) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    const { projectId, taskId } = req.params;
+
+    if (typeof projectId !== "string") {
+        res.status(400).json({ message: "Invalid project id" });
+        return;
+    }
+
+    if (typeof taskId !== "string") {
+        res.status(400).json({ message: "Invalid project id" });
+        return;
+    }
+
+    await taskService.leaveTaskService({
+        userId: req.user._id.toString(),
+        projectId,
+        taskId,
+    });
+
+    res.status(200).json({
+        message: "Left task successfully",
+    });
+};

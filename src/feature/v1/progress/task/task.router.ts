@@ -5,6 +5,7 @@ import {
     deleteTaskController,
     getTaskByIdController,
     getTasksController,
+    leaveTaskController,
     updateTaskController,
 } from "./task.controller";
 import { createTaskSchema } from "./dtos/create.data.dto";
@@ -32,5 +33,6 @@ router.patch(
     updateTaskController,
 );
 router.delete("/:taskId", protectRoutes, deleteTaskController);
+router.delete("/:taskId/leave", protectRoutes, leaveTaskController);
 
 export default router;
