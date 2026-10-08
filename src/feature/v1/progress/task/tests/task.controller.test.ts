@@ -7,6 +7,7 @@ vi.mock("../task.service", () => ({
     getTaskByIdService: vi.fn(),
     updateTaskService: vi.fn(),
     deleteTaskService: vi.fn(),
+    leaveTaskService: vi.fn(),
 }));
 
 import * as taskService from "../task.service";
@@ -16,6 +17,7 @@ import {
     getTaskByIdController,
     updateTaskController,
     deleteTaskController,
+    leaveTaskController,
 } from "../task.controller";
 import { TaskStatus } from "../types/task.enum";
 
@@ -337,6 +339,59 @@ describe("task.controller", () => {
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith({
                 message: "Deleted task successfully",
+            });
+        });
+    });
+
+    describe("leaveTaskController", () => {
+        it("returns 401 when req.user is missing", async () => {
+            const req = { user: undefined, params: {} } as unknown as Request;
+            const res = mockRes();
+
+            await leaveTaskController(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(401);
+            expect(taskService.leaveTaskService).not.toHaveBeenCalled();
+        });
+
+        it("returns 400 when projectId or taskId is not a string", async () => {
+            const invalidProjectReq = authedReq({
+                params: { projectId: ["project1"], taskId: "task1" },
+            });
+            const projectRes = mockRes();
+
+            await leaveTaskController(invalidProjectReq, projectRes);
+
+            expect(projectRes.status).toHaveBeenCalledWith(400);
+            expect(taskService.leaveTaskService).not.toHaveBeenCalled();
+
+            const invalidTaskReq = authedReq({
+                params: { projectId: "project1", taskId: ["task1"] },
+            });
+            const taskRes = mockRes();
+
+            await leaveTaskController(invalidTaskReq, taskRes);
+
+            expect(taskRes.status).toHaveBeenCalledWith(400);
+            expect(taskService.leaveTaskService).not.toHaveBeenCalled();
+        });
+
+        it("forwards projectId, taskId, and userId; returns 200", async () => {
+            const req = authedReq({
+                params: { projectId: "project1", taskId: "task1" },
+            });
+            const res = mockRes();
+
+            await leaveTaskController(req, res);
+
+            expect(taskService.leaveTaskService).toHaveBeenCalledWith({
+                userId: "user1",
+                projectId: "project1",
+                taskId: "task1",
+            });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Left task successfully",
             });
         });
     });

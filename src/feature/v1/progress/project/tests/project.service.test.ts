@@ -261,6 +261,20 @@ describe("project.service", () => {
             ).rejects.toThrow(NotFoundError);
         });
 
+        it("throws BadRequestError for a malformed project id", async () => {
+            (UserModel.findById as any).mockResolvedValue({
+                _id: idEq("owner1"),
+            });
+
+            await expect(
+                getProjectByIdService({
+                    userId: "owner1",
+                    projectId: "not-a-valid-id",
+                }),
+            ).rejects.toThrow(BadRequestError);
+            expect(ProjectModel.findById).not.toHaveBeenCalled();
+        });
+
         it("throws NotFoundError when the project does not exist", async () => {
             (UserModel.findById as any).mockResolvedValue({
                 _id: idEq("owner1"),

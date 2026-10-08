@@ -48,6 +48,7 @@ beforeAll(async () => {
 
     await mongoose.connect(process.env.MONGO_URI);
     app = (await import("../../../../../app")).default;
+    await Promise.all(Object.values(mongoose.models).map((model) => model.init()));
 }, 60_000);
 
 afterAll(async () => {

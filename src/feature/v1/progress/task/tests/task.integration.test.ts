@@ -111,6 +111,7 @@ beforeAll(async () => {
 
     await mongoose.connect(process.env.MONGO_URI);
     app = (await import("../../../../../app")).default;
+    await Promise.all(Object.values(mongoose.models).map((model) => model.init()));
     TaskModel = (await import("../task.model")).default;
     sendVerificationEmail = (
         await import("../../../../../common/utils/sendVerificationEmail")
@@ -482,6 +483,75 @@ describe("Task integration", () => {
 
             expect(res.status).toBe(403);
             expect(await TaskModel.findById(taskId)).not.toBeNull();
+        });
+    });
+
+    describe("DELETE /api/v1/progress/project/:projectId/task/:taskId/leave", () => {
+        it("removes the caller's assignment without deleting the task or other assignments", async () => {
+            const owner = await createVerifiedUser();
+            const member = await createVerifiedUser(
+                "memberuser",
+                "member@gmail.com",
+            );
+            const projectId = await createProject(owner.agent, {
+                type: "team",
+                members: ["memberuser"],
+            });
+            const taskId = await createTask(owner.agent, projectId, {
+                assignedTo: ["memberuser", "owneruser"],
+            });
+
+            const res = await member.agent.delete(
+                `${PROJECT_BASE}/${projectId}/task/${taskId}/leave`,
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.body).toEqual({
+                message: "Left task successfully",
+            });
+            const updatedTask = await TaskModel.findById(taskId);
+            expect(updatedTask).not.toBeNull();
+            expect(updatedTask!.assignedTo).toHaveLength(1);
+        });
+
+        it("returns 400 when the caller is not assigned to the task", async () => {
+            const owner = await createVerifiedUser();
+            const member = await createVerifiedUser(
+                "memberuser",
+                "member@gmail.com",
+            );
+            const projectId = await createProject(owner.agent, {
+                type: "team",
+                members: ["memberuser"],
+            });
+            const taskId = await createTask(owner.agent, projectId, {
+                assignedTo: ["memberuser"],
+            });
+
+            const res = await owner.agent.delete(
+                `${PROJECT_BASE}/${projectId}/task/${taskId}/leave`,
+            );
+
+            expect(res.status).toBe(400);
+            expect(await TaskModel.findById(taskId)).not.toBeNull();
+        });
+
+        it("returns 404 and leaves the task unchanged when the supplied project does not own it", async () => {
+            const { agent } = await createVerifiedUser();
+            const projectA = await createProject(agent, { title: "Proj A" });
+            const projectB = await createProject(agent, { title: "Proj B" });
+            const taskId = await createTask(agent, projectA, {
+                assignedTo: ["owneruser"],
+            });
+
+            const res = await agent.delete(
+                `${PROJECT_BASE}/${projectB}/task/${taskId}/leave`,
+            );
+
+            expect(res.status).toBe(404);
+            expect((await TaskModel.findById(taskId))!.assignedTo).toHaveLength(
+                1,
+            );
         });
     });
 });

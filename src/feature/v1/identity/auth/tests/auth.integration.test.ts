@@ -54,6 +54,7 @@ beforeAll(async () => {
     await mongoose.connect(uri);
 
     app = (await import("../../../../../app")).default;
+    await Promise.all(Object.values(mongoose.models).map((model) => model.init()));
     AuthModel = (await import("../auth.model")).default;
     UserModel = (await import("../../user/user.model")).default;
     sendVerificationEmail = (

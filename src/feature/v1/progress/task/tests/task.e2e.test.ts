@@ -69,6 +69,7 @@ beforeAll(async () => {
 
     await mongoose.connect(process.env.MONGO_URI);
     app = (await import("../../../../../app")).default;
+    await Promise.all(Object.values(mongoose.models).map((model) => model.init()));
     sendVerificationEmail = (
         await import("../../../../../common/utils/sendVerificationEmail")
     ).sendVerificationEmail as unknown as ReturnType<typeof vi.fn>;
@@ -88,7 +89,7 @@ beforeEach(async () => {
 });
 
 describe("Task E2E journeys", () => {
-    it("runs a full team task lifecycle: onboard two users → create team project → owner assigns a task to the member → member updates status → owner reassigns → task is visible to both, invisible to a stranger", async () => {
+    it("runs a team task lifecycle including a member leaving their assignment", async () => {
         const owner = await onboardUser("ownernow", "owner@gmail.com");
         const member = await onboardUser("membernow", "member@gmail.com");
         const stranger = await onboardUser("strangernow", "stranger@gmail.com");
@@ -143,19 +144,30 @@ describe("Task E2E journeys", () => {
         );
         expect(ownerView.body.data.status).toBe("in_progress");
 
-        // 7. The owner reassigns the task to themself
+        // 7. The member leaves the task; the task remains available to the project
+        const leaveRes = await member.delete(
+            `${PROJECT_BASE}/${projectId}/task/${taskId}/leave`,
+        );
+        expect(leaveRes.status).toBe(200);
+        const afterLeave = await owner.get(
+            `${PROJECT_BASE}/${projectId}/task/${taskId}`,
+        );
+        expect(afterLeave.status).toBe(200);
+        expect(afterLeave.body.data.assignedTo).toHaveLength(0);
+
+        // 8. The owner reassigns the task to themself
         const reassign = await owner
             .patch(`${PROJECT_BASE}/${projectId}/task/${taskId}`)
             .send({ assignedTo: ["ownernow"] });
         expect(reassign.status).toBe(200);
         expect(reassign.body.data.assignedTo).toHaveLength(1);
 
-        // 8. The task list for the project now reflects all changes
+        // 9. The task list for the project now reflects all changes
         const finalList = await owner.get(`${PROJECT_BASE}/${projectId}/task`);
         expect(finalList.body.data).toHaveLength(1);
         expect(finalList.body.data[0].status).toBe("in_progress");
 
-        // 9. Owner deletes the task
+        // 10. Owner deletes the task
         const deleteRes = await owner.delete(
             `${PROJECT_BASE}/${projectId}/task/${taskId}`,
         );

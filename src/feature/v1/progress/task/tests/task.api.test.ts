@@ -83,6 +83,7 @@ beforeAll(async () => {
 
     await mongoose.connect(process.env.MONGO_URI);
     app = (await import("../../../../../app")).default;
+    await Promise.all(Object.values(mongoose.models).map((model) => model.init()));
     sendVerificationEmail = (
         await import("../../../../../common/utils/sendVerificationEmail")
     ).sendVerificationEmail as unknown as ReturnType<typeof vi.fn>;
@@ -109,6 +110,7 @@ describe("Task API contract", () => {
             ["GET", `${PROJECT_BASE}/x/task/y`],
             ["PATCH", `${PROJECT_BASE}/x/task/y`],
             ["DELETE", `${PROJECT_BASE}/x/task/y`],
+            ["DELETE", `${PROJECT_BASE}/x/task/y/leave`],
         ])(
             "%s %s returns 401 with an error body when unauthenticated",
             async (method, path) => {
@@ -326,6 +328,31 @@ describe("Task API contract", () => {
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual({ message: expect.any(String) });
+        });
+    });
+
+    describe("DELETE /api/v1/progress/project/:projectId/task/:taskId/leave", () => {
+        it("returns 200 with a plain message body on success", async () => {
+            const owner = await createVerifiedUser();
+            const projectId = await createProject(owner);
+            const taskRes = await owner
+                .post(`${PROJECT_BASE}/${projectId}/task`)
+                .send({
+                    title: "Assigned task",
+                    deadline: futureISO(10),
+                    assignedTo: ["owneruser"],
+                });
+            expect(taskRes.status).toBe(201);
+            const taskId = taskRes.body.data.id as string;
+
+            const res = await owner.delete(
+                `${PROJECT_BASE}/${projectId}/task/${taskId}/leave`,
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.body).toEqual({
+                message: expect.any(String),
+            });
         });
     });
 

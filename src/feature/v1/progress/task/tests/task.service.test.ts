@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { Types } from "mongoose";
 
 vi.mock("../../../identity/user/user.model", () => ({
     default: {
@@ -30,6 +31,7 @@ import {
     getTaskByIdService,
     updateTaskService,
     deleteTaskService,
+    leaveTaskService,
 } from "../task.service";
 import { TaskStatus } from "../types/task.enum";
 import {
@@ -84,6 +86,12 @@ describe("task.service", () => {
                     userId: "user1",
                     projectId: "project1",
                     assignedTo: [],
+                }),
+            );
+            expect(result).toEqual(
+                expect.objectContaining({
+                    id: "task1",
+                    projectId: "project1",
                 }),
             );
             expect(result.remainingDays).toBeGreaterThan(0);
@@ -918,6 +926,139 @@ describe("task.service", () => {
                 }),
             ).rejects.toThrow(NotFoundError);
             expect(TaskModel.deleteOne).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("leaveTaskService", () => {
+        it("throws NotFoundError when the user does not exist", async () => {
+            (UserModel.findById as any).mockResolvedValue(null);
+
+            await expect(
+                leaveTaskService({
+                    userId: "missing",
+                    projectId: "project1",
+                    taskId: "task1",
+                }),
+            ).rejects.toThrow(NotFoundError);
+        });
+
+        it("throws NotFoundError when the task does not exist", async () => {
+            (TaskModel.findById as any).mockResolvedValue(null);
+
+            await expect(
+                leaveTaskService({
+                    userId: "owner1",
+                    projectId: "project1",
+                    taskId: "gone",
+                }),
+            ).rejects.toThrow(NotFoundError);
+        });
+
+        it("removes the caller from the assignees when the task belongs to the given project", async () => {
+            const userId = new Types.ObjectId();
+            const otherAssigneeId = new Types.ObjectId();
+            const task = {
+                _id: "task1",
+                projectId: "project1",
+                assignedTo: [userId, otherAssigneeId],
+                save: vi.fn().mockResolvedValue(undefined),
+            };
+            (TaskModel.findById as any).mockResolvedValue(task);
+            (getProjectByIdService as any).mockResolvedValue(
+                projectFixture({ id: "project1" }),
+            );
+
+            await leaveTaskService({
+                userId: userId.toString(),
+                projectId: "project1",
+                taskId: "task1",
+            });
+
+            expect(task.assignedTo).toEqual([otherAssigneeId]);
+            expect(task.save).toHaveBeenCalledOnce();
+        });
+
+        it("throws BadRequestError when the caller is not assigned to the task", async () => {
+            const task = {
+                _id: "task1",
+                projectId: "project1",
+                assignedTo: [],
+                save: vi.fn(),
+            };
+            (TaskModel.findById as any).mockResolvedValue(task);
+            (getProjectByIdService as any).mockResolvedValue(
+                projectFixture({ id: "project1" }),
+            );
+
+            await expect(
+                leaveTaskService({
+                    userId: "owner1",
+                    projectId: "project1",
+                    taskId: "task1",
+                }),
+            ).rejects.toThrow(BadRequestError);
+            expect(task.save).not.toHaveBeenCalled();
+        });
+
+        it("throws BadRequestError when the task has no assignee list", async () => {
+            const task = {
+                _id: "task1",
+                projectId: "project1",
+                save: vi.fn(),
+            };
+            (TaskModel.findById as any).mockResolvedValue(task);
+            (getProjectByIdService as any).mockResolvedValue(
+                projectFixture({ id: "project1" }),
+            );
+
+            await expect(
+                leaveTaskService({
+                    userId: "owner1",
+                    projectId: "project1",
+                    taskId: "task1",
+                }),
+            ).rejects.toThrow(BadRequestError);
+            expect(task.save).not.toHaveBeenCalled();
+        });
+
+        it("throws NotFoundError when the task belongs to a different project", async () => {
+            (TaskModel.findById as any).mockResolvedValue({
+                _id: "task1",
+                projectId: "otherProject",
+                assignedTo: [],
+                save: vi.fn(),
+            });
+            (getProjectByIdService as any).mockResolvedValue(
+                projectFixture({ id: "project1" }),
+            );
+
+            await expect(
+                leaveTaskService({
+                    userId: "owner1",
+                    projectId: "project1",
+                    taskId: "task1",
+                }),
+            ).rejects.toThrow(NotFoundError);
+        });
+
+        it("propagates access errors from getProjectByIdService", async () => {
+            (TaskModel.findById as any).mockResolvedValue({
+                _id: "task1",
+                projectId: "project1",
+                assignedTo: [],
+                save: vi.fn(),
+            });
+            (getProjectByIdService as any).mockRejectedValue(
+                new NotFoundError("Project not found"),
+            );
+
+            await expect(
+                leaveTaskService({
+                    userId: "stranger",
+                    projectId: "project1",
+                    taskId: "task1",
+                }),
+            ).rejects.toThrow(NotFoundError);
         });
     });
 });
