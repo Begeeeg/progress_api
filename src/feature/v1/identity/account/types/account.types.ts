@@ -16,3 +16,17 @@ export interface CreateAccountData {
 
     scopes?: string[];
 }
+
+export interface GetAccountsData {
+    userId: string;
+}
+
+export interface GetAccountData {
+    userId: string;
+    provider: AccountProvider;
+}
+
+export interface DeleteAccountData {
+    userId: string;
+    provider: AccountProvider;
+}
