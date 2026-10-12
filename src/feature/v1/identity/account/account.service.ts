@@ -113,6 +113,20 @@ export const getAccountsService = async ({ userId }: GetAccountsData) => {
     return accounts.map(toAccountResponse);
 };
 
+export const getPublicAccountsService = async ({ userId }: GetAccountsData) => {
+    const accounts = await AccountModel.find({ userId }).select(
+        "provider username avatarUrl profileUrl createdAt",
+    );
+
+    return accounts.map((account) => ({
+        provider: account.provider,
+        username: account.username,
+        avatarUrl: account.avatarUrl,
+        profileUrl: account.profileUrl,
+        createdAt: account.createdAt,
+    }));
+};
+
 export const getAccountService = async ({
     userId,
     provider,
