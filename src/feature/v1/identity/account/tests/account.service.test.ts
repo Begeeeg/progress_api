@@ -22,6 +22,7 @@ import {
     deleteAccountService,
     getAccountService,
     getAccountsService,
+    getPublicAccountsService,
 } from "../account.service";
 import {
     ConflictError,
@@ -215,6 +216,31 @@ describe("account read and delete services", () => {
         ]);
         expect(result[0]).not.toHaveProperty("accessToken");
         expect(result[0]).not.toHaveProperty("refreshToken");
+    });
+
+    it("returns only public provider details for profile display", async () => {
+        const select = vi.fn().mockResolvedValue([account]);
+        vi.mocked(AccountModel.find).mockReturnValue({ select } as never);
+
+        const result = await getPublicAccountsService({ userId });
+
+        expect(AccountModel.find).toHaveBeenCalledWith({ userId });
+        expect(select).toHaveBeenCalledWith(
+            "provider username avatarUrl profileUrl createdAt",
+        );
+        expect(result).toEqual([
+            {
+                provider: "github",
+                username: "octocat",
+                avatarUrl: "https://example.com/avatar.png",
+                profileUrl: "https://github.com/octocat",
+                createdAt: account.createdAt,
+            },
+        ]);
+        expect(result[0]).not.toHaveProperty("email");
+        expect(result[0]).not.toHaveProperty("providerAccountId");
+        expect(result[0]).not.toHaveProperty("scopes");
+        expect(result[0]).not.toHaveProperty("accessToken");
     });
 
     it("returns an account by provider scoped to the authenticated user", async () => {
