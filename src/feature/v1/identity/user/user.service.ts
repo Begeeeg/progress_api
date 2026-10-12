@@ -5,8 +5,10 @@ import {
     NotFoundError,
 } from "../../../../common/error/errorStatusCode";
 import AuthModel from "../auth/auth.model";
+import { getPublicAccountsService } from "../account/account.service";
 import {
     DeleteUserData,
+    GetPublicProfileData,
     GetUserData,
     SearchUsersData,
     UpdateUserInfoData,
@@ -43,6 +45,36 @@ export const getUserService = async ({ id }: GetUserData) => {
         email: user.email,
         isOnline: auth.isOnline,
         isVerified: auth.isVerified,
+    };
+};
+
+export const getPublicProfileService = async ({
+    username,
+}: GetPublicProfileData) => {
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) {
+        throw new BadRequestError("Username is required");
+    }
+
+    const user = await UserModel.findOne({ username: trimmedUsername }).select(
+        "_id username givenname surname avatarUrl createdAt"
+    );
+    if (!user) {
+        throw new NotFoundError("User not found");
+    }
+
+    const linkedAccounts = await getPublicAccountsService({
+        userId: user._id.toString(),
+    });
+
+    return {
+        id: user._id,
+        username: user.username,
+        givenname: user.givenname,
+        surname: user.surname,
+        avatarUrl: user.avatarUrl ?? null,
+        createdAt: user.createdAt,
+        linkedAccounts,
     };
 };
 
@@ -200,7 +232,7 @@ export const searchUsersService = async ({ query }: SearchUsersData) => {
         ],
     })
         // Only retrieve fields needed by the search response.
-        .select("username givenname surname email")
+        .select("username givenname surname")
         // Limit the result set to prevent large responses and unnecessary queries.
         .limit(20);
 
@@ -227,7 +259,6 @@ export const searchUsersService = async ({ query }: SearchUsersData) => {
         username: user.username,
         givenname: user.givenname,
         surname: user.surname,
-        email: user.email,
         // Treat a missing auth record as offline for the search response.
         isOnline: authByUserId.get(user._id.toString()) ?? false,
     }));

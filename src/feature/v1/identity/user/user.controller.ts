@@ -26,6 +26,26 @@ export const getUserController = async (
     });
 };
 
+export const getPublicProfileController = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    const username = req.params.username;
+    if (typeof username !== "string") {
+        res.status(400).json({ message: "Invalid username" });
+        return;
+    }
+
+    const profile = await userService.getPublicProfileService({
+        username,
+    });
+
+    res.status(200).json({
+        message: "Profile fetched successfully",
+        data: profile,
+    });
+};
+
 /**
  * Updates the authenticated user's profile information.
  *

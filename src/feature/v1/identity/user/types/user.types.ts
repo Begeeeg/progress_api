@@ -2,6 +2,10 @@ export interface GetUserData {
     id: string;
 }
 
+export interface GetPublicProfileData {
+    username: string;
+}
+
 export interface UpdateUserInfoData {
     id: string;
     username?: string;
