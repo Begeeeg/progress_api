@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 
 vi.mock("../user.service", () => ({
     getUserService: vi.fn(),
+    getPublicProfileService: vi.fn(),
     updateUserInfoService: vi.fn(),
     updatePasswordService: vi.fn(),
     searchUsersService: vi.fn(),
@@ -11,6 +12,7 @@ vi.mock("../user.service", () => ({
 
 import * as userService from "../user.service";
 import {
+    getPublicProfileController,
     getUserController,
     updateUserInfoController,
     updatePasswordController,
@@ -31,6 +33,49 @@ beforeEach(() => {
 });
 
 describe("user.controller", () => {
+    describe("getPublicProfileController", () => {
+        it("returns 400 when the username route parameter is not a string", async () => {
+            const req = {
+                params: { username: ["alice", "bob"] },
+            } as unknown as Request;
+            const res = mockRes();
+
+            await getPublicProfileController(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Invalid username",
+            });
+            expect(userService.getPublicProfileService).not.toHaveBeenCalled();
+        });
+
+        it("loads the requested public profile and returns 200", async () => {
+            const req = {
+                params: { username: "octocat" },
+            } as unknown as Request;
+            const res = mockRes();
+            const profile = {
+                id: "user123",
+                username: "octocat",
+                linkedAccounts: [],
+            };
+            vi.mocked(userService.getPublicProfileService).mockResolvedValue(
+                profile as never,
+            );
+
+            await getPublicProfileController(req, res);
+
+            expect(userService.getPublicProfileService).toHaveBeenCalledWith({
+                username: "octocat",
+            });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Profile fetched successfully",
+                data: profile,
+            });
+        });
+    });
+
     describe("getUserController", () => {
         it("returns 401 when req.user is missing", async () => {
             const req = { user: undefined } as unknown as Request;
