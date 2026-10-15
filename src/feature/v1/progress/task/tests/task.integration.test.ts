@@ -442,7 +442,7 @@ describe("Task integration", () => {
 
             const res = await agent.delete(
                 `${PROJECT_BASE}/${projectId}/task/${taskId}`,
-            );
+            ).send({ taskName: "A Task" });
 
             expect(res.status).toBe(200);
             expect(await TaskModel.findById(taskId)).toBeNull();
@@ -462,7 +462,7 @@ describe("Task integration", () => {
 
             const res = await agent.delete(
                 `${PROJECT_BASE}/${projectB}/task/${taskInA}`,
-            );
+            ).send({ taskName: "Protected" });
 
             expect(res.status).toBe(404);
             expect(await TaskModel.findById(taskInA)).not.toBeNull();
@@ -479,7 +479,7 @@ describe("Task integration", () => {
 
             const res = await stranger.agent.delete(
                 `${PROJECT_BASE}/${projectId}/task/${taskId}`,
-            );
+            ).send({ taskName: "A Task" });
 
             expect(res.status).toBe(403);
             expect(await TaskModel.findById(taskId)).not.toBeNull();
@@ -503,7 +503,7 @@ describe("Task integration", () => {
 
             const res = await member.agent.delete(
                 `${PROJECT_BASE}/${projectId}/task/${taskId}/leave`,
-            );
+            ).send({ taskName: "A Task" });
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual({
@@ -530,7 +530,7 @@ describe("Task integration", () => {
 
             const res = await owner.agent.delete(
                 `${PROJECT_BASE}/${projectId}/task/${taskId}/leave`,
-            );
+            ).send({ taskName: "A Task" });
 
             expect(res.status).toBe(400);
             expect(await TaskModel.findById(taskId)).not.toBeNull();
@@ -546,7 +546,7 @@ describe("Task integration", () => {
 
             const res = await agent.delete(
                 `${PROJECT_BASE}/${projectB}/task/${taskId}/leave`,
-            );
+            ).send({ taskName: "A Task" });
 
             expect(res.status).toBe(404);
             expect((await TaskModel.findById(taskId))!.assignedTo).toHaveLength(

@@ -147,7 +147,7 @@ describe("Task E2E journeys", () => {
         // 7. The member leaves the task; the task remains available to the project
         const leaveRes = await member.delete(
             `${PROJECT_BASE}/${projectId}/task/${taskId}/leave`,
-        );
+        ).send({ taskName: "Write launch doc" });
         expect(leaveRes.status).toBe(200);
         const afterLeave = await owner.get(
             `${PROJECT_BASE}/${projectId}/task/${taskId}`,
@@ -170,7 +170,7 @@ describe("Task E2E journeys", () => {
         // 10. Owner deletes the task
         const deleteRes = await owner.delete(
             `${PROJECT_BASE}/${projectId}/task/${taskId}`,
-        );
+        ).send({ taskName: "Write launch doc" });
         expect(deleteRes.status).toBe(200);
         const emptyList = await owner.get(`${PROJECT_BASE}/${projectId}/task`);
         expect(emptyList.body.data).toEqual([]);
@@ -216,7 +216,7 @@ describe("Task E2E journeys", () => {
 
         const deleteAttempt = await owner.delete(
             `${PROJECT_BASE}/${betaId}/task/${alphaTaskId}`,
-        );
+        ).send({ taskName: "Alpha secret" });
         expect(deleteAttempt.status).toBe(404);
 
         // The task is untouched and still reachable through its real project

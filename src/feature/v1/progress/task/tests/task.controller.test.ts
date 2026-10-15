@@ -326,6 +326,7 @@ describe("task.controller", () => {
         it("deletes the task and returns 200 with no data field", async () => {
             const req = authedReq({
                 params: { projectId: "project1", taskId: "task1" },
+                body: { taskName: "Task 1" },
             });
             const res = mockRes();
 
@@ -335,6 +336,7 @@ describe("task.controller", () => {
                 userId: "user1",
                 projectId: "project1",
                 taskId: "task1",
+                taskName: "Task 1",
             });
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith({
@@ -379,6 +381,7 @@ describe("task.controller", () => {
         it("forwards projectId, taskId, and userId; returns 200", async () => {
             const req = authedReq({
                 params: { projectId: "project1", taskId: "task1" },
+                body: { taskName: "Task 1" },
             });
             const res = mockRes();
 
@@ -388,6 +391,7 @@ describe("task.controller", () => {
                 userId: "user1",
                 projectId: "project1",
                 taskId: "task1",
+                taskName: "Task 1",
             });
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith({

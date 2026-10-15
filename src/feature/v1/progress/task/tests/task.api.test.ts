@@ -324,10 +324,23 @@ describe("Task API contract", () => {
 
             const res = await agent.delete(
                 `${PROJECT_BASE}/${projectId}/task/${taskId}`,
-            );
+            ).send({ taskName: "Seed Task" });
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual({ message: expect.any(String) });
+        });
+
+        it("requires the task name in the delete request", async () => {
+            const agent = await createVerifiedUser();
+            const projectId = await createProject(agent);
+            const taskId = await createTask(agent, projectId);
+
+            const res = await agent.delete(
+                `${PROJECT_BASE}/${projectId}/task/${taskId}`,
+            );
+
+            expect(res.status).toBe(400);
+            expect(res.body.message).toBe("Task name is required");
         });
     });
 
@@ -347,12 +360,32 @@ describe("Task API contract", () => {
 
             const res = await owner.delete(
                 `${PROJECT_BASE}/${projectId}/task/${taskId}/leave`,
-            );
+            ).send({ taskName: "Assigned task" });
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual({
                 message: expect.any(String),
             });
+        });
+
+        it("requires the task name before leaving an assigned task", async () => {
+            const owner = await createVerifiedUser();
+            const projectId = await createProject(owner);
+            const taskRes = await owner
+                .post(`${PROJECT_BASE}/${projectId}/task`)
+                .send({
+                    title: "Assigned task",
+                    deadline: futureISO(10),
+                    assignedTo: ["owneruser"],
+                });
+            const taskId = taskRes.body.data.id as string;
+
+            const res = await owner.delete(
+                `${PROJECT_BASE}/${projectId}/task/${taskId}/leave`,
+            );
+
+            expect(res.status).toBe(400);
+            expect(res.body.message).toBe("Task name is required");
         });
     });
 

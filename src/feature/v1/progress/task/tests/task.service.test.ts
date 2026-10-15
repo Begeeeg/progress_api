@@ -410,6 +410,7 @@ describe("task.service", () => {
             (TaskModel.findById as any).mockResolvedValue({
                 _id: "task1",
                 projectId: "project1",
+                title: "A Task",
             });
             (getProjectByIdService as any).mockRejectedValue(
                 new NotFoundError("Project not found"),
@@ -841,6 +842,7 @@ describe("task.service", () => {
             (TaskModel.findById as any).mockResolvedValue({
                 _id: "task1",
                 projectId: "project1",
+                title: "A Task",
             });
             (getProjectByIdService as any).mockResolvedValue(
                 projectFixture({ id: "project1" }),
@@ -853,6 +855,7 @@ describe("task.service", () => {
                 userId: "owner1",
                 projectId: "project1",
                 taskId: "task1",
+                taskName: "A Task",
             });
 
             expect(TaskModel.deleteOne).toHaveBeenCalledWith({
@@ -868,6 +871,7 @@ describe("task.service", () => {
                     userId: "missing",
                     projectId: "project1",
                     taskId: "task1",
+                    taskName: "A Task",
                 }),
             ).rejects.toThrow(NotFoundError);
         });
@@ -880,6 +884,7 @@ describe("task.service", () => {
                     userId: "owner1",
                     projectId: "project1",
                     taskId: "gone",
+                    taskName: "A Task",
                 }),
             ).rejects.toThrow(NotFoundError);
             expect(TaskModel.deleteOne).not.toHaveBeenCalled();
@@ -889,6 +894,7 @@ describe("task.service", () => {
             (TaskModel.findById as any).mockResolvedValue({
                 _id: "task1",
                 projectId: "project1",
+                title: "A Task",
             });
             (getProjectByIdService as any).mockRejectedValue(
                 new NotFoundError("Project not found"),
@@ -899,6 +905,7 @@ describe("task.service", () => {
                     userId: "stranger",
                     projectId: "project1",
                     taskId: "task1",
+                    taskName: "A Task",
                 }),
             ).rejects.toThrow(NotFoundError);
             expect(TaskModel.deleteOne).not.toHaveBeenCalled();
@@ -913,6 +920,7 @@ describe("task.service", () => {
             (TaskModel.findById as any).mockResolvedValue({
                 _id: "task1",
                 projectId: "someOtherProject",
+                title: "A Task",
             });
             (getProjectByIdService as any).mockResolvedValue(
                 projectFixture({ id: "project1" }),
@@ -923,8 +931,30 @@ describe("task.service", () => {
                     userId: "owner1",
                     projectId: "project1",
                     taskId: "task1",
+                    taskName: "A Task",
                 }),
             ).rejects.toThrow(NotFoundError);
+            expect(TaskModel.deleteOne).not.toHaveBeenCalled();
+        });
+
+        it("does not delete when the confirmation name does not match", async () => {
+            (TaskModel.findById as any).mockResolvedValue({
+                _id: "task1",
+                projectId: "project1",
+                title: "A Task",
+            });
+            (getProjectByIdService as any).mockResolvedValue(
+                projectFixture({ id: "project1" }),
+            );
+
+            await expect(
+                deleteTaskService({
+                    userId: "owner1",
+                    projectId: "project1",
+                    taskId: "task1",
+                    taskName: "Wrong task",
+                }),
+            ).rejects.toThrow(BadRequestError);
             expect(TaskModel.deleteOne).not.toHaveBeenCalled();
         });
     });
@@ -938,6 +968,7 @@ describe("task.service", () => {
                     userId: "missing",
                     projectId: "project1",
                     taskId: "task1",
+                    taskName: "A Task",
                 }),
             ).rejects.toThrow(NotFoundError);
         });
@@ -950,6 +981,7 @@ describe("task.service", () => {
                     userId: "owner1",
                     projectId: "project1",
                     taskId: "gone",
+                    taskName: "A Task",
                 }),
             ).rejects.toThrow(NotFoundError);
         });
@@ -960,6 +992,7 @@ describe("task.service", () => {
             const task = {
                 _id: "task1",
                 projectId: "project1",
+                title: "A Task",
                 assignedTo: [userId, otherAssigneeId],
                 save: vi.fn().mockResolvedValue(undefined),
             };
@@ -972,16 +1005,44 @@ describe("task.service", () => {
                 userId: userId.toString(),
                 projectId: "project1",
                 taskId: "task1",
+                taskName: "A Task",
             });
 
             expect(task.assignedTo).toEqual([otherAssigneeId]);
             expect(task.save).toHaveBeenCalledOnce();
         });
 
+        it("does not remove the caller when the confirmation name does not match", async () => {
+            const userId = new Types.ObjectId();
+            const task = {
+                _id: "task1",
+                projectId: "project1",
+                title: "A Task",
+                assignedTo: [userId],
+                save: vi.fn(),
+            };
+            (TaskModel.findById as any).mockResolvedValue(task);
+            (getProjectByIdService as any).mockResolvedValue(
+                projectFixture({ id: "project1" }),
+            );
+
+            await expect(
+                leaveTaskService({
+                    userId: userId.toString(),
+                    projectId: "project1",
+                    taskId: "task1",
+                    taskName: "Wrong task",
+                }),
+            ).rejects.toThrow(BadRequestError);
+            expect(task.assignedTo).toEqual([userId]);
+            expect(task.save).not.toHaveBeenCalled();
+        });
+
         it("throws BadRequestError when the caller is not assigned to the task", async () => {
             const task = {
                 _id: "task1",
                 projectId: "project1",
+                title: "A Task",
                 assignedTo: [],
                 save: vi.fn(),
             };
@@ -995,6 +1056,7 @@ describe("task.service", () => {
                     userId: "owner1",
                     projectId: "project1",
                     taskId: "task1",
+                    taskName: "A Task",
                 }),
             ).rejects.toThrow(BadRequestError);
             expect(task.save).not.toHaveBeenCalled();
@@ -1004,6 +1066,7 @@ describe("task.service", () => {
             const task = {
                 _id: "task1",
                 projectId: "project1",
+                title: "A Task",
                 save: vi.fn(),
             };
             (TaskModel.findById as any).mockResolvedValue(task);
@@ -1016,6 +1079,7 @@ describe("task.service", () => {
                     userId: "owner1",
                     projectId: "project1",
                     taskId: "task1",
+                    taskName: "A Task",
                 }),
             ).rejects.toThrow(BadRequestError);
             expect(task.save).not.toHaveBeenCalled();
@@ -1025,6 +1089,7 @@ describe("task.service", () => {
             (TaskModel.findById as any).mockResolvedValue({
                 _id: "task1",
                 projectId: "otherProject",
+                title: "A Task",
                 assignedTo: [],
                 save: vi.fn(),
             });
@@ -1037,6 +1102,7 @@ describe("task.service", () => {
                     userId: "owner1",
                     projectId: "project1",
                     taskId: "task1",
+                    taskName: "A Task",
                 }),
             ).rejects.toThrow(NotFoundError);
         });
@@ -1045,6 +1111,7 @@ describe("task.service", () => {
             (TaskModel.findById as any).mockResolvedValue({
                 _id: "task1",
                 projectId: "project1",
+                title: "A Task",
                 assignedTo: [],
                 save: vi.fn(),
             });
@@ -1057,6 +1124,7 @@ describe("task.service", () => {
                     userId: "stranger",
                     projectId: "project1",
                     taskId: "task1",
+                    taskName: "A Task",
                 }),
             ).rejects.toThrow(NotFoundError);
         });
