@@ -1,7 +1,10 @@
 import {
+    BadRequestError,
     ConflictError,
     NotFoundError,
 } from "../../../../common/error/errorStatusCode";
+import bcrypt from "bcryptjs";
+import AuthModel from "../auth/auth.model";
 import UserModel from "../user/user.model";
 import AccountModel from "./account.model";
 import {
@@ -146,7 +149,18 @@ export const getAccountService = async ({
 export const deleteAccountService = async ({
     userId,
     provider,
+    password,
 }: DeleteAccountData) => {
+    const auth = await AuthModel.findOne({ userId }).select("+password");
+    if (!auth) {
+        throw new NotFoundError("Auth record not found");
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, auth.password);
+    if (!isPasswordValid) {
+        throw new BadRequestError("Invalid password");
+    }
+
     const account = await AccountModel.findOneAndDelete({
         userId,
         provider,

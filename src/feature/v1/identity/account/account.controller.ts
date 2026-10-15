@@ -75,6 +75,7 @@ export const deleteAccountController = async (
     await deleteAccountService({
         userId: req.user._id.toString(),
         provider,
+        password: req.body.password,
     });
 
     res.status(200).json({

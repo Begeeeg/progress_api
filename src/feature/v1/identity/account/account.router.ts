@@ -9,12 +9,19 @@ import {
     getAccountController,
     getAccountsController,
 } from "./account.controller";
+import { validate } from "../../../../common/middleware/validatorDataDto";
+import { DeleteAccountSchema } from "./dtos/deleteAccount.data.dto";
 
 const router = express.Router();
 
 router.get("/", protectRoutes, getAccountsController);
 router.get("/:provider", protectRoutes, getAccountController);
-router.delete("/:provider", protectRoutes, deleteAccountController);
+router.delete(
+    "/:provider",
+    protectRoutes,
+    validate(DeleteAccountSchema),
+    deleteAccountController,
+);
 
 router.use("/facebook", facebookRouter);
 router.use("/github", githubRouter);

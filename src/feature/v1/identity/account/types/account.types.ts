@@ -29,4 +29,5 @@ export interface GetAccountData {
 export interface DeleteAccountData {
     userId: string;
     provider: AccountProvider;
+    password: string;
 }
