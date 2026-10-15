@@ -7,9 +7,11 @@ import UserModel from "../../identity/user/user.model";
 import { getProjectByIdService } from "../project/project.service";
 import {
     CreateTaskData,
+    DeleteTaskData,
     GetTaskByIdData,
-    UpdateTaskData,
     GetTasksData,
+    LeaveTaskData,
+    UpdateTaskData,
 } from "./types/task.types";
 import TaskModel from "./task.model";
 
@@ -330,7 +332,8 @@ export const deleteTaskService = async ({
     userId,
     projectId,
     taskId,
-}: GetTaskByIdData) => {
+    taskName,
+}: DeleteTaskData) => {
     const user = await UserModel.findById(userId);
     if (!user) {
         throw new NotFoundError("User not found");
@@ -347,6 +350,10 @@ export const deleteTaskService = async ({
         throw new NotFoundError("Task not found");
     }
 
+    if (taskName.trim() !== task.title) {
+        throw new BadRequestError("Task name does not match");
+    }
+
     await TaskModel.deleteOne({ _id: task._id });
 };
 
@@ -354,7 +361,8 @@ export const leaveTaskService = async ({
     userId,
     projectId,
     taskId,
-}: GetTaskByIdData) => {
+    taskName,
+}: LeaveTaskData) => {
     const user = await UserModel.findById(userId);
     if (!user) {
         throw new NotFoundError("User not found");
@@ -379,6 +387,10 @@ export const leaveTaskService = async ({
 
     if (!isAssigned) {
         throw new BadRequestError("You are not assigned to this task.");
+    }
+
+    if (taskName.trim() !== task.title) {
+        throw new BadRequestError("Task name does not match");
     }
 
     task.assignedTo = assignedTo.filter(

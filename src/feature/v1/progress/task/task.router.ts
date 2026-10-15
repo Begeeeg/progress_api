@@ -11,6 +11,7 @@ import {
 import { createTaskSchema } from "./dtos/create.data.dto";
 import { validate } from "../../../../common/middleware/validatorDataDto";
 import { updateTaskSchema } from "./dtos/update.data.dto";
+import { ConfirmTaskNameSchema } from "./dtos/confirmTaskName.data.dto";
 
 // mergeParams lets this router read `:projectId` from the parent
 // project router it's mounted under (see project.router.ts:
@@ -32,7 +33,17 @@ router.patch(
     validate(updateTaskSchema),
     updateTaskController,
 );
-router.delete("/:taskId", protectRoutes, deleteTaskController);
-router.delete("/:taskId/leave", protectRoutes, leaveTaskController);
+router.delete(
+    "/:taskId",
+    protectRoutes,
+    validate(ConfirmTaskNameSchema),
+    deleteTaskController,
+);
+router.delete(
+    "/:taskId/leave",
+    protectRoutes,
+    validate(ConfirmTaskNameSchema),
+    leaveTaskController,
+);
 
 export default router;

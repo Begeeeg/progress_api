@@ -156,6 +156,7 @@ export const deleteTaskController = async (
         userId: req.user._id.toString(),
         projectId,
         taskId,
+        taskName: req.body.taskName,
     });
 
     res.status(200).json({
@@ -188,6 +189,7 @@ export const leaveTaskController = async (
         userId: req.user._id.toString(),
         projectId,
         taskId,
+        taskName: req.body.taskName,
     });
 
     res.status(200).json({

@@ -21,6 +21,14 @@ export interface GetTaskByIdData {
     taskId: string;
 }
 
+export interface DeleteTaskData extends GetTaskByIdData {
+    taskName: string;
+}
+
+export interface LeaveTaskData extends GetTaskByIdData {
+    taskName: string;
+}
+
 export interface UpdateTaskData {
     userId: string;
     projectId: string;
