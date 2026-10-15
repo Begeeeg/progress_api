@@ -530,6 +530,7 @@ describe("project.service", () => {
             _id: "p1",
             userId: idEq("owner1"),
             title: "Old title",
+            title: "Old title",
             type: ProjectType.PERSONAL,
             status: ProjectStatus.ACTIVE,
             dueDate: new Date("2026-01-10T00:00:00.000Z"),
@@ -571,6 +572,7 @@ describe("project.service", () => {
                 updateProjectService({
                     userId: "someoneelse",
                     projectId: "p1",
+                    projectName: "Old title",
                     title: "New title",
                 } as any),
             ).rejects.toThrow(ForbiddenError);
@@ -586,6 +588,7 @@ describe("project.service", () => {
                 updateProjectService({
                     userId: "owner1",
                     projectId: "p1",
+                    projectName: "Team project",
                 } as any),
             ).rejects.toThrow(BadRequestError);
             expect(ProjectModel.findByIdAndUpdate).not.toHaveBeenCalled();
@@ -882,7 +885,11 @@ describe("project.service", () => {
             (UserModel.findById as any).mockResolvedValue(null);
 
             await expect(
-                deleteProjectService({ userId: "missing", projectId: "p1" }),
+                deleteProjectService({
+                    userId: "missing",
+                    projectId: "p1",
+                    projectName: "Old title",
+                }),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -893,7 +900,11 @@ describe("project.service", () => {
             (ProjectModel.findById as any).mockResolvedValue(null);
 
             await expect(
-                deleteProjectService({ userId: "owner1", projectId: "p1" }),
+                deleteProjectService({
+                    userId: "owner1",
+                    projectId: "p1",
+                    projectName: "Old title",
+                }),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -910,6 +921,7 @@ describe("project.service", () => {
                 deleteProjectService({
                     userId: "someoneelse",
                     projectId: "p1",
+                    projectName: "Old title",
                 }),
             ).rejects.toThrow(ForbiddenError);
             expect(ProjectModel.deleteOne).not.toHaveBeenCalled();
@@ -922,13 +934,38 @@ describe("project.service", () => {
             (ProjectModel.findById as any).mockResolvedValue({
                 _id: "p1",
                 userId: idEq("owner1"),
+                title: "Old title",
             });
 
-            await deleteProjectService({ userId: "owner1", projectId: "p1" });
+            await deleteProjectService({
+                userId: "owner1",
+                projectId: "p1",
+                projectName: "Old title",
+            });
 
             expect(ProjectModel.deleteOne).toHaveBeenCalledWith({
                 _id: "p1",
             });
+        });
+
+        it("rejects a project name that does not match before deletion", async () => {
+            (UserModel.findById as any).mockResolvedValue({
+                _id: idEq("owner1"),
+            });
+            (ProjectModel.findById as any).mockResolvedValue({
+                _id: "p1",
+                userId: idEq("owner1"),
+                title: "Old title",
+            });
+
+            await expect(
+                deleteProjectService({
+                    userId: "owner1",
+                    projectId: "p1",
+                    projectName: "Wrong title",
+                }),
+            ).rejects.toThrow("Project name does not match");
+            expect(ProjectModel.deleteOne).not.toHaveBeenCalled();
         });
     });
 
@@ -978,7 +1015,11 @@ describe("project.service", () => {
             (ProjectModel.findById as any).mockResolvedValue(null);
 
             await expect(
-                leaveProjectService({ userId: "member1", projectId: "p1" }),
+                leaveProjectService({
+                    userId: "member1",
+                    projectId: "p1",
+                    projectName: "Team project",
+                }),
             ).rejects.toThrow(NotFoundError);
         });
 
@@ -989,7 +1030,11 @@ describe("project.service", () => {
             });
 
             await expect(
-                leaveProjectService({ userId: "owner1", projectId: "p1" }),
+                leaveProjectService({
+                    userId: "owner1",
+                    projectId: "p1",
+                    projectName: "Team project",
+                }),
             ).rejects.toThrow(BadRequestError);
         });
 
@@ -1000,7 +1045,11 @@ describe("project.service", () => {
             });
 
             await expect(
-                leaveProjectService({ userId: "outsider", projectId: "p1" }),
+                leaveProjectService({
+                    userId: "outsider",
+                    projectId: "p1",
+                    projectName: "Team project",
+                }),
             ).rejects.toThrow(BadRequestError);
         });
 
@@ -1014,7 +1063,11 @@ describe("project.service", () => {
             });
 
             await expect(
-                leaveProjectService({ userId: "outsider", projectId: "p1" }),
+                leaveProjectService({
+                    userId: "outsider",
+                    projectId: "p1",
+                    projectName: "Team project",
+                }),
             ).rejects.toThrow(BadRequestError);
         });
 
@@ -1025,6 +1078,7 @@ describe("project.service", () => {
 
             const projectDoc = {
                 userId: { equals: (b: unknown) => b === "owner1" },
+                title: "Team project",
                 members: [memberToLeave, otherMember],
                 save,
             };
@@ -1033,11 +1087,31 @@ describe("project.service", () => {
             await leaveProjectService({
                 userId: "member1",
                 projectId: "p1",
+                projectName: "Team project",
             });
 
             expect(save).toHaveBeenCalled();
             expect(projectDoc.members).toEqual([otherMember]);
             expect(projectDoc.members).not.toContain(memberToLeave);
+        });
+
+        it("rejects a project name that does not match before a member leaves", async () => {
+            const save = vi.fn();
+            (ProjectModel.findById as any).mockResolvedValue({
+                userId: { equals: (b: unknown) => b === "owner1" },
+                title: "Team project",
+                members: [{ equals: (b: unknown) => b === "member1" }],
+                save,
+            });
+
+            await expect(
+                leaveProjectService({
+                    userId: "member1",
+                    projectId: "p1",
+                    projectName: "Wrong title",
+                }),
+            ).rejects.toThrow("Project name does not match");
+            expect(save).not.toHaveBeenCalled();
         });
     });
 });

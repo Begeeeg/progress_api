@@ -498,7 +498,9 @@ describe("Project integration", () => {
             const list = await agent.get(BASE);
             const projectId = list.body.data[0].id;
 
-            const res = await agent.delete(`${BASE}/${projectId}`);
+            const res = await agent
+                .delete(`${BASE}/${projectId}`)
+                .send({ projectName: "Doomed" });
 
             expect(res.status).toBe(200);
             expect(await ProjectModel.findById(projectId)).toBeNull();
@@ -514,7 +516,9 @@ describe("Project integration", () => {
                 "stranger",
                 "stranger@gmail.com",
             );
-            const res = await stranger.agent.delete(`${BASE}/${projectId}`);
+            const res = await stranger.agent
+                .delete(`${BASE}/${projectId}`)
+                .send({ projectName: "Safe" });
 
             expect(res.status).toBe(403);
             expect(await ProjectModel.findById(projectId)).not.toBeNull();
@@ -567,7 +571,9 @@ describe("Project integration", () => {
             const list = await ownerAgent.get(BASE);
             const projectId = list.body.data[0].id;
 
-            const res = await member.agent.delete(`${BASE}/${projectId}/leave`);
+            const res = await member.agent
+                .delete(`${BASE}/${projectId}/leave`)
+                .send({ projectName: "Team" });
 
             expect(res.status).toBe(200);
 
@@ -586,7 +592,9 @@ describe("Project integration", () => {
             const list = await ownerAgent.get(BASE);
             const projectId = list.body.data[0].id;
 
-            const res = await ownerAgent.delete(`${BASE}/${projectId}/leave`);
+            const res = await ownerAgent
+                .delete(`${BASE}/${projectId}/leave`)
+                .send({ projectName: "Team" });
 
             expect(res.status).toBe(400);
         });
@@ -603,7 +611,7 @@ describe("Project integration", () => {
             );
             const res = await stranger.agent.delete(
                 `${BASE}/${projectId}/leave`,
-            );
+            ).send({ projectName: "Private" });
 
             expect(res.status).toBe(400);
         });

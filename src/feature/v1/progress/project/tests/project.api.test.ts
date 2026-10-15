@@ -325,7 +325,9 @@ describe("Project API contract", () => {
         it("returns 400 with an error body for a malformed project id", async () => {
             const agent = await createVerifiedUser();
 
-            const res = await agent.delete(`${BASE}/not-a-valid-id`);
+            const res = await agent
+                .delete(`${BASE}/not-a-valid-id`)
+                .send({ projectName: "Seed" });
 
             expect(res.status).toBe(500);
             expect(res.body).toEqual({ message: expect.any(String) });
@@ -335,10 +337,24 @@ describe("Project API contract", () => {
             const agent = await createVerifiedUser();
             const projectId = await seedProject(agent);
 
-            const res = await agent.delete(`${BASE}/${projectId}`);
+            const res = await agent
+                .delete(`${BASE}/${projectId}`)
+                .send({ projectName: "Seed" });
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual({ message: expect.any(String) });
+        });
+
+        it("requires the project name in the delete request", async () => {
+            const agent = await createVerifiedUser();
+            const projectId = await seedProject(agent);
+
+            const res = await agent.delete(`${BASE}/${projectId}`);
+
+            expect(res.status).toBe(400);
+            expect(res.body.errors.projectName).toContain(
+                "Project name is required",
+            );
         });
     });
 
@@ -360,7 +376,9 @@ describe("Project API contract", () => {
         it("returns 400 with an error body for a malformed project id", async () => {
             const agent = await createVerifiedUser();
 
-            const res = await agent.delete(`${BASE}/not-a-valid-id/leave`);
+            const res = await agent
+                .delete(`${BASE}/not-a-valid-id/leave`)
+                .send({ projectName: "Seed" });
 
             expect(res.status).toBe(500);
             expect(res.body).toEqual({ message: expect.any(String) });
@@ -377,10 +395,31 @@ describe("Project API contract", () => {
                 members: ["memberuser"],
             });
 
-            const res = await memberAgent.delete(`${BASE}/${projectId}/leave`);
+            const res = await memberAgent
+                .delete(`${BASE}/${projectId}/leave`)
+                .send({ projectName: "Seed" });
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual({ message: expect.any(String) });
+        });
+
+        it("requires the project name before a member can leave", async () => {
+            const ownerAgent = await createVerifiedUser();
+            const memberAgent = await createVerifiedUser(
+                "memberuser",
+                "member@gmail.com",
+            );
+            const projectId = await seedProject(ownerAgent, {
+                type: "team",
+                members: ["memberuser"],
+            });
+
+            const res = await memberAgent.delete(`${BASE}/${projectId}/leave`);
+
+            expect(res.status).toBe(400);
+            expect(res.body.errors.projectName).toContain(
+                "Project name is required",
+            );
         });
     });
 

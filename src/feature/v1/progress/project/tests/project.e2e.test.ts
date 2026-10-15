@@ -156,7 +156,9 @@ describe("Project E2E journeys", () => {
         expect(memberReread.body.data.status).toBe("inactive");
 
         // 7. The member leaves
-        const leaveRes = await member.delete(`${BASE}/${projectId}/leave`);
+        const leaveRes = await member
+            .delete(`${BASE}/${projectId}/leave`)
+            .send({ projectName: "Renamed" });
         expect(leaveRes.status).toBe(200);
 
         // 8. It's gone from every one of the member's views, and they can
@@ -172,7 +174,9 @@ describe("Project E2E journeys", () => {
         expect(ownerAfter.body.data.members).toHaveLength(0);
 
         // 10. The owner deletes it, and it's gone for good
-        const deleteRes = await owner.delete(`${BASE}/${projectId}`);
+        const deleteRes = await owner
+            .delete(`${BASE}/${projectId}`)
+            .send({ projectName: "Renamed" });
         expect(deleteRes.status).toBe(200);
         expect((await owner.get(`${BASE}/${projectId}`)).status).toBe(404);
         expect((await owner.get(BASE)).body.data).toEqual([]);
@@ -227,9 +231,13 @@ describe("Project E2E journeys", () => {
                     .send({ title: "Stolen" })
             ).status,
         ).toBe(403);
-        expect((await bob.delete(`${BASE}/${aliceProjectId}`)).status).toBe(
-            403,
-        );
+        expect(
+            (
+                await bob
+                    .delete(`${BASE}/${aliceProjectId}`)
+                    .send({ projectName: "Alice Work" })
+            ).status,
+        ).toBe(403);
 
         // Alice's project survived all of it
         const aliceAfter = await alice.get(`${BASE}/${aliceProjectId}`);

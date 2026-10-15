@@ -361,7 +361,10 @@ describe("project.controller", () => {
         });
 
         it("deletes the project and returns 200 with no data field", async () => {
-            const req = authedReq({ params: { projectId: "p1" } });
+            const req = authedReq({
+                params: { projectId: "p1" },
+                body: { projectName: "Roadmap" },
+            });
             const res = mockRes();
 
             await deleteProjectController(req, res);
@@ -369,6 +372,7 @@ describe("project.controller", () => {
             expect(projectService.deleteProjectService).toHaveBeenCalledWith({
                 userId: "user123",
                 projectId: "p1",
+                projectName: "Roadmap",
             });
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith({
@@ -379,6 +383,7 @@ describe("project.controller", () => {
         it("returns 400 when projectId is not a string", async () => {
             const req = authedReq({
                 params: { projectId: ["p1", "p2"] },
+                body: { projectName: "Roadmap" },
             });
             const res = mockRes();
 
@@ -449,7 +454,10 @@ describe("project.controller", () => {
         });
 
         it("leaves the project and returns 200 with no data field", async () => {
-            const req = authedReq({ params: { projectId: "p1" } });
+            const req = authedReq({
+                params: { projectId: "p1" },
+                body: { projectName: "Roadmap" },
+            });
             const res = mockRes();
 
             await leaveProjectController(req, res);
@@ -457,6 +465,7 @@ describe("project.controller", () => {
             expect(projectService.leaveProjectService).toHaveBeenCalledWith({
                 userId: "user123",
                 projectId: "p1",
+                projectName: "Roadmap",
             });
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith({
@@ -467,6 +476,7 @@ describe("project.controller", () => {
         it("returns 400 when projectId is not a string", async () => {
             const req = authedReq({
                 params: { projectId: ["p1", "p2"] },
+                body: { projectName: "Roadmap" },
             });
             const res = mockRes();
 
