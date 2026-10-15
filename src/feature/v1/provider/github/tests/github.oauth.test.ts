@@ -9,7 +9,7 @@ import {
     GITHUB_API_URL,
     GITHUB_API_VERSION,
     GITHUB_AUTHORIZE_URL,
-    GITHUB_CALLBACK_URL,
+    getGitHubCallbackUrl,
     GITHUB_TOKEN_URL,
 } from "../utils/githubConnect";
 
@@ -17,6 +17,10 @@ describe("github.oauth", () => {
     beforeEach(() => {
         vi.stubEnv("GITHUB_CLIENT_ID", "github-client-id");
         vi.stubEnv("GITHUB_CLIENT_SECRET", "github-client-secret");
+        vi.stubEnv(
+            "GITHUB_CALLBACK_URL",
+            "https://api.example.com/api/v1/identity/account/github/callback",
+        );
         vi.stubGlobal("fetch", vi.fn());
     });
 
@@ -30,7 +34,7 @@ describe("github.oauth", () => {
 
         expect(url.origin + url.pathname).toBe(GITHUB_AUTHORIZE_URL);
         expect(url.searchParams.get("client_id")).toBe("github-client-id");
-        expect(url.searchParams.get("redirect_uri")).toBe(GITHUB_CALLBACK_URL);
+        expect(url.searchParams.get("redirect_uri")).toBe(getGitHubCallbackUrl());
         expect(url.searchParams.get("scope")).toBe("read:user user:email");
         expect(url.searchParams.get("state")).toBe("opaque-state");
     });
@@ -63,7 +67,7 @@ describe("github.oauth", () => {
             client_id: "github-client-id",
             client_secret: "github-client-secret",
             code: "auth-code",
-            redirect_uri: GITHUB_CALLBACK_URL,
+            redirect_uri: getGitHubCallbackUrl(),
         });
     });
 

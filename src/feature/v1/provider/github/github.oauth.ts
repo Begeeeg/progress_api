@@ -7,10 +7,10 @@ import {
 import {
     getGitHubClientId,
     getGitHubClientSecret,
+    getGitHubCallbackUrl,
     GITHUB_API_URL,
     GITHUB_API_VERSION,
     GITHUB_AUTHORIZE_URL,
-    GITHUB_CALLBACK_URL,
     GITHUB_TOKEN_URL,
 } from "./utils/githubConnect";
 
@@ -18,7 +18,7 @@ export const buildGitHubAuthorizationUrl = (state: string): string => {
     const url = new URL(GITHUB_AUTHORIZE_URL);
 
     url.searchParams.set("client_id", getGitHubClientId());
-    url.searchParams.set("redirect_uri", GITHUB_CALLBACK_URL);
+    url.searchParams.set("redirect_uri", getGitHubCallbackUrl());
     url.searchParams.set("scope", "read:user user:email");
     url.searchParams.set("state", state);
 
@@ -38,7 +38,7 @@ export const exchangeCodeForAccessToken = async (
             client_id: getGitHubClientId(),
             client_secret: getGitHubClientSecret(),
             code,
-            redirect_uri: GITHUB_CALLBACK_URL,
+            redirect_uri: getGitHubCallbackUrl(),
         }),
     });
 

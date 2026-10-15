@@ -10,7 +10,6 @@ import {
     GITHUB_API_URL,
     GITHUB_API_VERSION,
     GITHUB_AUTHORIZE_URL,
-    GITHUB_CALLBACK_URL,
     GITHUB_STATE_COOKIE,
     GITHUB_TOKEN_URL,
 } from "../utils/githubConnect";
@@ -58,9 +57,6 @@ describe("githubConnect", () => {
         expect(GITHUB_TOKEN_URL).toBe("https://github.com/login/oauth/access_token");
         expect(GITHUB_API_URL).toBe("https://api.github.com");
         expect(GITHUB_API_VERSION).toBe("2026-03-10");
-        expect(GITHUB_CALLBACK_URL).toBe(
-            "http://localhost:5000/api/v1/identity/account/github/callback",
-        );
         expect(GITHUB_STATE_COOKIE).toBe("github_oauth_state");
     });
 });

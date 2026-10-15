@@ -72,6 +72,4 @@ export const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 export const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
 export const GITHUB_API_URL = "https://api.github.com";
 export const GITHUB_API_VERSION = "2026-03-10";
-export const GITHUB_CALLBACK_URL =
-    "http://localhost:5000/api/v1/identity/account/github/callback";
 export const GITHUB_STATE_COOKIE = "github_oauth_state";

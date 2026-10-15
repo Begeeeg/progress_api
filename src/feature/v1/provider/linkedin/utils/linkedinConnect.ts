@@ -19,9 +19,14 @@ export const getLinkedInClientSecret = (): string => {
     return clientSecret;
 };
 
-export const getLinkedInCallbackUrl = (): string =>
-    process.env.LINKEDIN_CALLBACK_URL ??
-    "http://localhost:5000/api/v1/identity/account/linkedin/callback";
+export const getLinkedInCallbackUrl = (): string => {
+    const callbackUrl = process.env.LINKEDIN_CALLBACK_URL;
+    if (!callbackUrl) {
+        throw new Error("LINKEDIN_CALLBACK_URL is not configured");
+    }
+
+    return callbackUrl;
+};
 
 export const LINKEDIN_AUTHORIZE_URL =
     "https://www.linkedin.com/oauth/v2/authorization";
@@ -29,4 +34,3 @@ export const LINKEDIN_TOKEN_URL =
     "https://www.linkedin.com/oauth/v2/accessToken";
 export const LINKEDIN_USERINFO_URL = "https://api.linkedin.com/v2/userinfo";
 export const LINKEDIN_STATE_COOKIE = "linkedin_oauth_state";
-export const LINKEDIN_CALLBACK_URL = "http://localhost:5000/api/v1/identity/account/linkedin/callback";
