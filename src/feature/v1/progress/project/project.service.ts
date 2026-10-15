@@ -13,6 +13,7 @@ import {
     GetProjectByIdData,
     GetProjectSearchData,
     GetProjectsData,
+    LeaveProjectData,
     UpdateProjectData,
 } from "./types/project.types";
 import mongoose from "mongoose";
@@ -446,6 +447,7 @@ export const updateProjectService = async ({
 export const deleteProjectService = async ({
     userId,
     projectId,
+    projectName,
 }: DeleteProjectData) => {
     const user = await UserModel.findById(userId);
     if (!user) {
@@ -463,6 +465,10 @@ export const deleteProjectService = async ({
         throw new ForbiddenError(
             "Only the project owner can delete this project",
         );
+    }
+
+    if (projectName.trim() !== project.title) {
+        throw new BadRequestError("Project name does not match");
     }
 
     await ProjectModel.deleteOne({ _id: project._id });
@@ -520,7 +526,8 @@ export const getSharedProjectsService = async ({ userId }: GetProjectsData) => {
 export const leaveProjectService = async ({
     userId,
     projectId,
-}: GetProjectByIdData) => {
+    projectName,
+}: LeaveProjectData) => {
     const project = await ProjectModel.findById(projectId);
     if (!project) {
         throw new NotFoundError("Project not found");
@@ -540,6 +547,10 @@ export const leaveProjectService = async ({
 
     if (!isMember) {
         throw new BadRequestError("You are not a member of this project.");
+    }
+
+    if (projectName.trim() !== project.title) {
+        throw new BadRequestError("Project name does not match");
     }
 
     // Remove only the authenticated user's membership while preserving all

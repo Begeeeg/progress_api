@@ -245,6 +245,7 @@ export const deleteProjectController = async (
         // Always derive the requesting user's identity from authentication.
         userId: req.user._id.toString(),
         projectId,
+        projectName: req.body.projectName,
     });
 
     res.status(200).json({
@@ -308,6 +309,7 @@ export const leaveProjectController = async (
         // member rather than accepting a user ID from the client.
         userId: req.user._id.toString(),
         projectId,
+        projectName: req.body.projectName,
     });
 
     res.status(200).json({

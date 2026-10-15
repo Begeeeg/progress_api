@@ -43,4 +43,11 @@ export interface UpdateProjectData {
 export interface DeleteProjectData {
     userId: string;
     projectId: string;
+    projectName: string;
+}
+
+export interface LeaveProjectData {
+    userId: string;
+    projectId: string;
+    projectName: string;
 }

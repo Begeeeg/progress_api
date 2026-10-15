@@ -13,6 +13,7 @@ import {
 } from "./project.controller";
 import { validate } from "../../../../common/middleware/validatorDataDto";
 import { UpdateProjectSchema } from "./dtos/update.data.dto";
+import { ConfirmProjectNameSchema } from "./dtos/confirmProjectName.data.dto";
 import { taskRouter } from "../task";
 
 const router = express.Router();
@@ -41,9 +42,19 @@ router.patch(
     updateProjectController,
 );
 
-router.delete("/:projectId", protectRoutes, deleteProjectController);
+router.delete(
+    "/:projectId",
+    protectRoutes,
+    validate(ConfirmProjectNameSchema),
+    deleteProjectController,
+);
 
-router.delete("/:projectId/leave", protectRoutes, leaveProjectController);
+router.delete(
+    "/:projectId/leave",
+    protectRoutes,
+    validate(ConfirmProjectNameSchema),
+    leaveProjectController,
+);
 
 // Tasks are a nested resource under a project: /:projectId/task/...
 // `mergeParams` on taskRouter (see task.router.ts) lets it read
