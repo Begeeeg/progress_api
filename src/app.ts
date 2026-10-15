@@ -1,6 +1,5 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-import mongoose from "mongoose";
 import apiRouter from "./router";
 import cookieParser from "cookie-parser";
 import { globalErrorHandler } from "./common/error/globalErrorHandler";
@@ -8,7 +7,7 @@ import { globalErrorHandler } from "./common/error/globalErrorHandler";
 const app = express();
 
 if (process.env.NODE_ENV === "production") {
-  app.set("trust proxy", 1);
+  app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS) || 2);
 }
 
 app.use(
