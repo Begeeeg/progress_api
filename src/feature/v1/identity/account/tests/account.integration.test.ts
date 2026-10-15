@@ -127,7 +127,7 @@ describe("Account integration", () => {
 
         const deleteResponse = await agent.delete(
             `/api/v1/identity/account/${AccountProvider.GOOGLE}`,
-        );
+        ).send({ password: "Password1" });
         expect(deleteResponse.status).toBe(200);
         expect(deleteResponse.body.message).toBe(
             "Account disconnected successfully",
@@ -147,7 +147,7 @@ describe("Account integration", () => {
 
         const deleteResponse = await otherUser.agent.delete(
             `/api/v1/identity/account/${AccountProvider.LINKEDIN}`,
-        );
+        ).send({ password: "Password1" });
         expect(deleteResponse.status).toBe(404);
         expect(
             await AccountModel.countDocuments({ userId: owner.userId }),

@@ -15,8 +15,22 @@ vi.mock("../../user/user.model", () => ({
     },
 }));
 
+vi.mock("../../auth/auth.model", () => ({
+        default: {
+            findOne: vi.fn(),
+        },
+}));
+
+vi.mock("bcryptjs", () => ({
+        default: {
+            compare: vi.fn(),
+        },
+}));
+
 import AccountModel from "../account.model";
 import UserModel from "../../user/user.model";
+import AuthModel from "../../auth/auth.model";
+import bcrypt from "bcryptjs";
 import {
     createAccountService,
     deleteAccountService,
@@ -270,26 +284,75 @@ describe("account read and delete services", () => {
     });
 
     it("deletes the authenticated user's account for the provider", async () => {
+        const select = vi.fn().mockResolvedValue({ password: "hashed-password" });
+        vi.mocked(AuthModel.findOne).mockReturnValue({ select } as never);
+        vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
         vi.mocked(AccountModel.findOneAndDelete).mockResolvedValue(
             account as never,
         );
 
         await expect(
-            deleteAccountService({ userId, provider: AccountProvider.GITHUB }),
+            deleteAccountService({
+                userId,
+                provider: AccountProvider.GITHUB,
+                password: "correct-password",
+            }),
         ).resolves.toBeUndefined();
 
+        expect(AuthModel.findOne).toHaveBeenCalledWith({ userId });
+        expect(select).toHaveBeenCalledWith("+password");
+        expect(bcrypt.compare).toHaveBeenCalledWith(
+            "correct-password",
+            "hashed-password",
+        );
         expect(AccountModel.findOneAndDelete).toHaveBeenCalledWith({
             userId,
             provider: AccountProvider.GITHUB,
         });
     });
 
+    it("does not delete the provider account when the password is incorrect", async () => {
+        const select = vi.fn().mockResolvedValue({ password: "hashed-password" });
+        vi.mocked(AuthModel.findOne).mockReturnValue({ select } as never);
+        vi.mocked(bcrypt.compare).mockResolvedValue(false as never);
+
+        await expect(
+            deleteAccountService({
+                userId,
+                provider: AccountProvider.GITHUB,
+                password: "wrong-password",
+            }),
+        ).rejects.toThrow("Invalid password");
+
+        expect(AccountModel.findOneAndDelete).not.toHaveBeenCalled();
+    });
+
+    it("does not delete a provider account when no auth record exists", async () => {
+        const select = vi.fn().mockResolvedValue(null);
+        vi.mocked(AuthModel.findOne).mockReturnValue({ select } as never);
+
+        await expect(
+            deleteAccountService({
+                userId,
+                provider: AccountProvider.GITHUB,
+                password: "correct-password",
+            }),
+        ).rejects.toBeInstanceOf(NotFoundError);
+
+        expect(bcrypt.compare).not.toHaveBeenCalled();
+        expect(AccountModel.findOneAndDelete).not.toHaveBeenCalled();
+    });
+
     it("returns not found when deleting a provider without an account", async () => {
+        const select = vi.fn().mockResolvedValue({ password: "hashed-password" });
+        vi.mocked(AuthModel.findOne).mockReturnValue({ select } as never);
+        vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
         vi.mocked(AccountModel.findOneAndDelete).mockResolvedValue(null);
         await expect(
             deleteAccountService({
                 userId,
                 provider: AccountProvider.GITHUB,
+                password: "correct-password",
             }),
         ).rejects.toBeInstanceOf(NotFoundError);
     });

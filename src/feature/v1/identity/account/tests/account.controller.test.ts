@@ -106,13 +106,17 @@ describe("account.controller", () => {
         const res = mockRes();
 
         await deleteAccountController(
-            authedReq({ params: { provider: AccountProvider.GITHUB } }),
+            authedReq({
+                params: { provider: AccountProvider.GITHUB },
+                body: { password: "Password1" },
+            }),
             res,
         );
 
         expect(accountService.deleteAccountService).toHaveBeenCalledWith({
             userId: "user-id",
             provider: AccountProvider.GITHUB,
+            password: "Password1",
         });
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith({
@@ -126,6 +130,7 @@ describe("account.controller", () => {
             {
                 user: undefined,
                 params: { provider: AccountProvider.GITHUB },
+                body: { password: "Password1" },
             } as unknown as Request,
             res,
         );
@@ -148,7 +153,10 @@ describe("account.controller", () => {
 
         const deleteRes = mockRes();
         await deleteAccountController(
-            authedReq({ params: { provider: "unknown" } }),
+            authedReq({
+                params: { provider: "unknown" },
+                body: { password: "Password1" },
+            }),
             deleteRes,
         );
         expect(deleteRes.status).toHaveBeenCalledWith(400);

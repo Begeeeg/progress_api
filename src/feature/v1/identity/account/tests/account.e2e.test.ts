@@ -121,7 +121,7 @@ describe("Account E2E journey", () => {
 
         const deleteResponse = await agent.delete(
             `/api/v1/identity/account/${AccountProvider.GITHUB}`,
-        );
+        ).send({ password: "Password1" });
         expect(deleteResponse.status).toBe(200);
 
         const finalListResponse = await agent.get(

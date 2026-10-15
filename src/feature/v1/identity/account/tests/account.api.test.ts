@@ -161,9 +161,9 @@ describe("Account API contract", () => {
         const { agent, userId } = await registerAndAuthenticate();
         await createAccount(userId);
 
-        const deleteResponse = await agent.delete(
-            `/api/v1/identity/account/${AccountProvider.FACEBOOK}`,
-        );
+        const deleteResponse = await agent
+            .delete(`/api/v1/identity/account/${AccountProvider.FACEBOOK}`)
+            .send({ password: "Password1" });
         expect(deleteResponse.status).toBe(200);
         expect(deleteResponse.body).toEqual({
             message: "Account disconnected successfully",
@@ -176,5 +176,29 @@ describe("Account API contract", () => {
         expect(getResponse.body).toEqual({
             message: "facebook account not found",
         });
+
+    });
+
+    it("requires a password and rejects an incorrect password when disconnecting", async () => {
+        const { agent, userId } = await registerAndAuthenticate();
+        await createAccount(userId);
+
+        const missingPasswordResponse = await agent.delete(
+            `/api/v1/identity/account/${AccountProvider.FACEBOOK}`,
+        );
+        expect(missingPasswordResponse.status).toBe(400);
+
+        const incorrectPasswordResponse = await agent
+            .delete(`/api/v1/identity/account/${AccountProvider.FACEBOOK}`)
+            .send({ password: "WrongPassword1" });
+        expect(incorrectPasswordResponse.status).toBe(400);
+        expect(incorrectPasswordResponse.body).toEqual({
+            message: "Invalid password",
+        });
+
+        const getResponse = await agent.get(
+            `/api/v1/identity/account/${AccountProvider.FACEBOOK}`,
+        );
+        expect(getResponse.status).toBe(200);
     });
 });
