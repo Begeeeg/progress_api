@@ -2,15 +2,28 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import {
-    BadRequestError,
-    ConflictError,
-    NotFoundError,
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
 } from "../../../../common/error/errorStatusCode";
 import { LoginData, RegisterData } from "./types/auth.types";
 import UserModel from "../user/user.model";
 import AuthModel from "./auth.model";
 import { sendVerificationEmail } from "../../../../common/utils/sendVerificationEmail";
 import { sendWelcomeEmail } from "../../../../common/utils/sendWelcomeEmail";
+
+/**
+ * Runs an email send without blocking the request that triggered it.
+ *
+ * A slow or failing email provider must never delay or fail registration or
+ * verification once the database work has succeeded. Failures are logged, and
+ * the user can request another verification email from the verify-email page.
+ */
+const sendInBackground = (label: string, task: Promise<unknown>) => {
+  task.catch((error) => {
+    console.error(`📧 Failed to send ${label} email:`, error);
+  });
+};
 
 /**
  * Registers a new user and creates the corresponding authentication record
@@ -20,100 +33,107 @@ import { sendWelcomeEmail } from "../../../../common/utils/sendWelcomeEmail";
  * a cryptographically random token with a limited validity period.
  */
 export const registerService = async ({
-    username,
-    givenname,
-    surname,
-    email,
-    password,
+  username,
+  givenname,
+  surname,
+  email,
+  password,
 }: RegisterData) => {
-    const session = await mongoose.startSession();
-    let user;
-    let auth;
+  const session = await mongoose.startSession();
+  let user;
+  let auth;
+  let verificationToken: string;
 
-    try {
-        // User and authentication records must be created together so a
-        // partial registration cannot leave an account in an inconsistent state.
-        session.startTransaction();
+  try {
+    // User and authentication records must be created together so a
+    // partial registration cannot leave an account in an inconsistent state.
+    session.startTransaction();
 
-        const existing = await UserModel.findOne({
-            $or: [{ username }, { email }],
-        }).session(session);
+    const existing = await UserModel.findOne({
+      $or: [{ username }, { email }],
+    }).session(session);
 
-        if (existing) {
-            // Keep username and email conflicts distinguishable so clients
-            // can receive the appropriate validation message.
-            if (existing.username === username) {
-                throw new ConflictError("Username already exists");
-            }
-            throw new ConflictError("Email already exists");
-        }
-
-        // Store only the password hash; the plaintext password must never
-        // be persisted or included in the authentication record.
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Generate an unpredictable verification token and limit its
-        // validity to reduce the impact of token exposure.
-        const verificationToken = crypto.randomBytes(32).toString("hex");
-        const verificationTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
-
-        const lastLogin = new Date();
-        const isOnline = true;
-
-        // This separate expiration controls how long an unverified account
-        // can remain in the system before the cleanup process removes it.
-        const unverifiedExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-        [user] = await UserModel.create(
-            [
-                {
-                    username,
-                    givenname,
-                    surname,
-                    email,
-                },
-            ],
-            { session }
-        );
-
-        [auth] = await AuthModel.create(
-            [
-                {
-                    userId: user._id,
-                    password: hashedPassword,
-                    isOnline,
-                    lastLogin,
-                    verificationToken,
-                    verificationTokenExpiry,
-                    unverifiedExpiresAt,
-                },
-            ],
-            { session }
-        );
-
-        // Commit before sending the email so the verification link is only
-        // sent after the account records have been successfully persisted.
-        await session.commitTransaction();
-
-        await sendVerificationEmail(email, username, verificationToken);
-    } catch (error) {
-        // Roll back both records when any database operation in the
-        // registration transaction fails.
-        await session.abortTransaction();
-        throw error;
-    } finally {
-        session.endSession();
+    if (existing) {
+      // Keep username and email conflicts distinguishable so clients
+      // can receive the appropriate validation message.
+      if (existing.username === username) {
+        throw new ConflictError("Username already exists");
+      }
+      throw new ConflictError("Email already exists");
     }
 
-    return {
-        userId: user._id,
-        username: user.username,
-        givenname: user.givenname,
-        surname: user.surname,
-        email: user.email,
-        isOnline: auth.isOnline,
-        isVerified: auth.isVerified,
-    };
+    // Store only the password hash; the plaintext password must never
+    // be persisted or included in the authentication record.
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Generate an unpredictable verification token and limit its
+    // validity to reduce the impact of token exposure.
+    verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
+
+    const lastLogin = new Date();
+    const isOnline = true;
+
+    // This separate expiration controls how long an unverified account
+    // can remain in the system before the cleanup process removes it.
+    const unverifiedExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    [user] = await UserModel.create(
+      [
+        {
+          username,
+          givenname,
+          surname,
+          email,
+        },
+      ],
+      { session },
+    );
+
+    [auth] = await AuthModel.create(
+      [
+        {
+          userId: user._id,
+          password: hashedPassword,
+          isOnline,
+          lastLogin,
+          verificationToken,
+          verificationTokenExpiry,
+          unverifiedExpiresAt,
+        },
+      ],
+      { session },
+    );
+
+    await session.commitTransaction();
+  } catch (error) {
+    // Roll back both records when any database operation in the
+    // registration transaction fails. Only abort while the transaction is
+    // still open, so a failed abort can never mask the original error.
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    throw error;
+  } finally {
+    session.endSession();
+  }
+
+  // The account is committed, so the email is sent in the background and the
+  // client gets its response immediately instead of waiting on the provider.
+  sendInBackground(
+    "verification",
+    sendVerificationEmail(email, username, verificationToken),
+  );
+
+  return {
+    userId: user._id,
+    username: user.username,
+    givenname: user.givenname,
+    surname: user.surname,
+    email: user.email,
+    isOnline: auth.isOnline,
+    isVerified: auth.isVerified,
+  };
 };
 
 /**
@@ -124,35 +144,37 @@ export const registerService = async ({
  * token so it cannot be reused.
  */
 export const verifyEmailService = async (token: string) => {
-    // Select the normally hidden verification fields because they are
-    // required to validate the supplied token and its expiration.
-    const auth = await AuthModel.findOne({
-        verificationToken: token,
-    }).select("+verificationToken +verificationTokenExpiry");
+  // Select the normally hidden verification fields because they are
+  // required to validate the supplied token and its expiration.
+  const auth = await AuthModel.findOne({
+    verificationToken: token,
+  }).select("+verificationToken +verificationTokenExpiry");
 
-    if (
-        !auth ||
-        !auth.verificationTokenExpiry ||
-        auth.verificationTokenExpiry < new Date()
-    ) {
-        throw new BadRequestError("Invalid or expired verification token");
-    }
+  if (
+    !auth ||
+    !auth.verificationTokenExpiry ||
+    auth.verificationTokenExpiry < new Date()
+  ) {
+    throw new BadRequestError("Invalid or expired verification token");
+  }
 
-    const user = await UserModel.findById(auth.userId);
-    if (!user) {
-        throw new NotFoundError("User not found");
-    }
+  const user = await UserModel.findById(auth.userId);
+  if (!user) {
+    throw new NotFoundError("User not found");
+  }
 
-    // Clear the verification credentials after successful use to make
-    // the verification token effectively single-use.
-    auth.isVerified = true;
-    auth.unverifiedExpiresAt = null;
-    auth.verificationToken = null;
-    auth.verificationTokenExpiry = null;
-    await auth.save();
+  // Clear the verification credentials after successful use to make
+  // the verification token effectively single-use.
+  auth.isVerified = true;
+  auth.unverifiedExpiresAt = null;
+  auth.verificationToken = null;
+  auth.verificationTokenExpiry = null;
+  await auth.save();
 
-    // The welcome email is sent only after the account has been marked verified.
-    await sendWelcomeEmail(user.email, user.username);
+  // The welcome email is a courtesy: it is sent only after the account has
+  // been marked verified, and a failure must not turn a successful
+  // verification into an error response.
+  sendInBackground("welcome", sendWelcomeEmail(user.email, user.username));
 };
 
 /**
@@ -160,28 +182,30 @@ export const verifyEmailService = async (token: string) => {
  * unverified account.
  */
 export const resendVerificationService = async (email: string) => {
-    const user = await UserModel.findOne({ email });
+  const user = await UserModel.findOne({ email });
 
-    if (!user) {
-        throw new BadRequestError("User not found");
-    }
+  if (!user) {
+    throw new BadRequestError("User not found");
+  }
 
-    const auth = await AuthModel.findOne({ userId: user._id });
+  const auth = await AuthModel.findOne({ userId: user._id });
 
-    if (!auth || auth.isVerified) {
-        throw new BadRequestError("User is already verified or not found");
-    }
+  if (!auth || auth.isVerified) {
+    throw new BadRequestError("User is already verified or not found");
+  }
 
-    // Generate a fresh token and expiration instead of extending the
-    // lifetime of the previous verification credential.
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    const verificationTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
+  // Generate a fresh token and expiration instead of extending the
+  // lifetime of the previous verification credential.
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+  const verificationTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
 
-    auth.verificationToken = verificationToken;
-    auth.verificationTokenExpiry = verificationTokenExpiry;
-    await auth.save();
+  auth.verificationToken = verificationToken;
+  auth.verificationTokenExpiry = verificationTokenExpiry;
+  await auth.save();
 
-    await sendVerificationEmail(email, user.username, verificationToken);
+  // Awaited on purpose: the user explicitly asked for this email, so a
+  // failure should be reported back (the sender call has a 10s timeout).
+  await sendVerificationEmail(email, user.username, verificationToken);
 };
 
 /**
@@ -189,17 +213,17 @@ export const resendVerificationService = async (email: string) => {
  * when the logout operation occurred.
  */
 export const logOutService = async (userId: string) => {
-    const user = await UserModel.findById(userId);
+  const user = await UserModel.findById(userId);
 
-    if (!user) {
-        throw new NotFoundError("User not found");
-    }
+  if (!user) {
+    throw new NotFoundError("User not found");
+  }
 
-    await AuthModel.findOneAndUpdate(
-        { userId },
-        { isOnline: false, lastLogout: new Date() },
-        { returnDocument: "after" }
-    );
+  await AuthModel.findOneAndUpdate(
+    { userId },
+    { isOnline: false, lastLogout: new Date() },
+    { returnDocument: "after" },
+  );
 };
 
 /**
@@ -207,48 +231,48 @@ export const logOutService = async (userId: string) => {
  * the account's login state after successful credential validation.
  */
 export const logInService = async ({ email, password }: LoginData) => {
-    const user = await UserModel.findOne({
-        email,
-    });
+  const user = await UserModel.findOne({
+    email,
+  });
 
-    if (!user) {
-        // Use the same response for unknown emails and incorrect passwords
-        // to avoid revealing whether an account exists.
-        throw new BadRequestError("Invalid email or password");
-    }
+  if (!user) {
+    // Use the same response for unknown emails and incorrect passwords
+    // to avoid revealing whether an account exists.
+    throw new BadRequestError("Invalid email or password");
+  }
 
-    // Password is excluded by default from the authentication document,
-    // so it must be explicitly selected only for credential verification.
-    const auth = await AuthModel.findOne({ userId: user._id }).select(
-        "+password"
-    );
+  // Password is excluded by default from the authentication document,
+  // so it must be explicitly selected only for credential verification.
+  const auth = await AuthModel.findOne({ userId: user._id }).select(
+    "+password",
+  );
 
-    if (!auth) {
-        throw new BadRequestError("Invalid email or password");
-    }
+  if (!auth) {
+    throw new BadRequestError("Invalid email or password");
+  }
 
-    const isPasswordValid = await bcrypt.compare(password, auth.password);
+  const isPasswordValid = await bcrypt.compare(password, auth.password);
 
-    if (!isPasswordValid) {
-        // Keep credential failures indistinguishable from an unknown email
-        // to reduce account-enumeration risk.
-        throw new BadRequestError("Invalid email or password");
-    }
+  if (!isPasswordValid) {
+    // Keep credential failures indistinguishable from an unknown email
+    // to reduce account-enumeration risk.
+    throw new BadRequestError("Invalid email or password");
+  }
 
-    // Update login state only after the password has been successfully verified.
-    const updatedAuth = await AuthModel.findOneAndUpdate(
-        { userId: user._id },
-        { isOnline: true, lastLogin: new Date() },
-        { returnDocument: "after" }
-    );
+  // Update login state only after the password has been successfully verified.
+  const updatedAuth = await AuthModel.findOneAndUpdate(
+    { userId: user._id },
+    { isOnline: true, lastLogin: new Date() },
+    { returnDocument: "after" },
+  );
 
-    return {
-        userId: user._id,
-        username: user.username,
-        givenname: user.givenname,
-        surname: user.surname,
-        email: user.email,
-        isOnline: updatedAuth?.isOnline,
-        isVerified: updatedAuth?.isVerified,
-    };
+  return {
+    userId: user._id,
+    username: user.username,
+    givenname: user.givenname,
+    surname: user.surname,
+    email: user.email,
+    isOnline: updatedAuth?.isOnline,
+    isVerified: updatedAuth?.isVerified,
+  };
 };

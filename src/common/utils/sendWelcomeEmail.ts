@@ -1,4 +1,4 @@
-import { transporter } from "../../config/mailer";
+import { sendMail } from "../../config/mailer";
 
 /**
  * Sends a welcome email after the user's email address has been verified.
@@ -7,11 +7,10 @@ import { transporter } from "../../config/mailer";
  * application to continue using the service.
  */
 export const sendWelcomeEmail = async (email: string, username: string) => {
-    await transporter.sendMail({
-        from: process.env.MAIL_FROM,
-        to: email,
-        subject: "Welcome aboard!",
-        html: `
+  await sendMail({
+    to: email,
+    subject: "Welcome aboard!",
+    html: `
             <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
                 <h2>Welcome ${username}!</h2>
                 <p>Your email has been verified and your account is now active. We're glad to have you.</p>
@@ -20,5 +19,5 @@ export const sendWelcomeEmail = async (email: string, username: string) => {
                 </a>
             </div>
         `,
-    });
+  });
 };

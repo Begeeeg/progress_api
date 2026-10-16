@@ -1,4 +1,4 @@
-import { transporter } from "../../config/mailer";
+import { sendMail } from "../../config/mailer";
 
 /**
  * Sends the email verification message containing a time-limited verification link.
@@ -7,19 +7,18 @@ import { transporter } from "../../config/mailer";
  * to identify and validate the pending email verification request.
  */
 export const sendVerificationEmail = async (
-    email: string,
-    username: string,
-    token: string
+  email: string,
+  username: string,
+  token: string,
 ) => {
-    // The client handles the verification page, while the token allows the
-    // backend verification flow to identify the corresponding request.
-    const verifyUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
+  // The client handles the verification page, while the token allows the
+  // backend verification flow to identify the corresponding request.
+  const verifyUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
 
-    await transporter.sendMail({
-        from: process.env.MAIL_FROM,
-        to: email,
-        subject: "Verify your email",
-        html: `
+  await sendMail({
+    to: email,
+    subject: "Verify your email",
+    html: `
             <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
                 <h1>Dear ${username},</h1>
                 <h2>Verify your email</h2>
@@ -32,5 +31,5 @@ export const sendVerificationEmail = async (
                 </p>
             </div>
         `,
-    });
+  });
 };
