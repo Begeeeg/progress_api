@@ -21,11 +21,11 @@ vi.mock("../auth.model", () => ({
 }));
 
 vi.mock("../../../../../common/utils/sendVerificationEmail", () => ({
-    sendVerificationEmail: vi.fn(),
+    sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../../../../../common/utils/sendWelcomeEmail", () => ({
-    sendWelcomeEmail: vi.fn(),
+    sendWelcomeEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("bcryptjs", () => ({
@@ -66,6 +66,7 @@ const mockSession = {
     commitTransaction: vi.fn(),
     abortTransaction: vi.fn(),
     endSession: vi.fn(),
+    inTransaction: vi.fn().mockReturnValue(true),
 };
 
 beforeEach(() => {
