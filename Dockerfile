@@ -32,6 +32,10 @@ RUN pnpm install --prod --frozen-lockfile \
 
 COPY --from=build --chown=node:node /app/dist ./dist
 
+# Check the API health endpoint from inside the container.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 5000) + '/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+
 USER node
 
 CMD ["node", "dist/index.js"]
