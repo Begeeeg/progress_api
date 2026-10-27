@@ -11,7 +11,7 @@ permissions:
 
 jobs:
     validate:
-        name: Type-check and build
+        name: Type-check, test, and build
         runs-on: ubuntu-latest
 
         steps:
@@ -34,6 +34,9 @@ jobs:
 
             - name: Check TypeScript
               run: pnpm typecheck
+
+            - name: Run automated tests
+              run: pnpm test:coverage
 
             - name: Build application
               run: pnpm build
